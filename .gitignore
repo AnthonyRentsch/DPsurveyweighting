@@ -37,3 +37,6 @@ rsconnect/
 
 # Mac
 .DS_Store
+
+# Data
+data/CCES16_Common_OUTPUT_Jul2017_VV.tab
