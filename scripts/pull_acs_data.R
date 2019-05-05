@@ -8,9 +8,10 @@
 rm(list = ls())
 require(plyr); require(dplyr)
 setwd("~/Desktop/Harvard/S19/cs208/DPsurveyweighting/data/")
-out_file_name = "cell_counts_3var.csv"
+cell_counts_file_name = "cell_counts_3var.csv"
+state_weights_file_name = "state_weights.csv"
 
-states <- tolower(state.abb)
+states <- tolower(c(state.abb, "DC"))
 person_vars <- c("ST",
                  #"AGEP",
                  #"CIT",
@@ -40,13 +41,15 @@ get_weighted_cell_counts <- function(data, weight_var, ...) {
     group_by_(...) %>% 
     tally_(weight_var) %>% 
     ungroup() %>% 
-    mutate(weighted_share = n/sum(n))
+    mutate(weighted_share_of_state = n/sum(n))
   return(cell_counts)
 }
 
 df_list <- list()
+state_weights <- matrix(NA, nrow=length(states), ncol=3)
 i <- 1
 start_time <- Sys.time()
+
 for(state in states) {
   cat("State:", state)
   # grab ACS data for a state
@@ -72,6 +75,11 @@ for(state in states) {
   state_cell_counts$state <- state
   # add df to list of dfs
   df_list[[i]] <- state_cell_counts
+  # save sum of weights and maximum weight
+  state_weights[i,] <- c(state, 
+                         max(state_person_data[,person_weight]), 
+                         sum(state_person_data[,person_weight]))
+
   i <- i + 1
 }
 
@@ -79,7 +87,11 @@ end_time <- Sys.time()
 cat("Ran for", end_time-start_time)
 
 all_cell_counts <- do.call(dplyr::bind_rows, df_list)
-write.csv(all_cell_counts, file=out_file_name)
+state_weights_df <- as.data.frame(state_weights)
+names(state_weights_df) <- c("state", "max_weight", "sum_weights")
+
+write.csv(all_cell_counts, file=cell_counts_file_name)
+write.csv(state_weights_df, file=state_weights_file_name)
         
 
 
@@ -126,4 +138,9 @@ write.csv(all_cell_counts, file=out_file_name)
 #                          RAC1P == 7 ~ 7,
 #                          RAC1P %in% c(5,8,9) ~ 5,
 #                          HISP != 1 ~ 999))
+
+
+
+
+
 

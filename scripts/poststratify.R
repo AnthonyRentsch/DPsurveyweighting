@@ -39,7 +39,7 @@ cces16 <- cces16 %>%
                           race %in% c(5,6,7,8,98,99,NA) ~ 5)
          )
 states <- data.frame(inputstate = seq(1:56), 
-                     state = tolower(c("AL","AK","","AZ","AR","CA","","CO","CT","DE","D.C.",
+                     state = tolower(c("AL","AK","","AZ","AR","CA","","CO","CT","DE","DC",
                                        "FL","GA","","HI","ID","IL","IN","IA","KS","KY","LA",
                                        "ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH",
                                        "NJ","NM","NY","NC","ND","OH","OK","OR","PA","","RI","SC",
@@ -65,6 +65,5 @@ cces16.des <- svydesign(ids = ~ 1, data = cces16_slim)
 cces16.des.ps <- postStratify(design = cces16.des,
                               strata = ~all_vars,
                               population = acs_cell_counts)
-
 
 
