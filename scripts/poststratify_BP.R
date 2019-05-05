@@ -65,10 +65,26 @@ acs_cell_counts_slim <- acs_cell_counts %>%
 # (1) SRS for illustrative purposes
 # (2) US population size = weighted sum from ACS --> 308532957, which may be off by 5-10 million
 
-cces16.des <- svydesign(ids = ~ 1, data = cces16_slim)
+#ids = ~ 1 means no clusters, every person has same probability of being sampled
+#pass in CCES data because that's the data we want weights for
+cces16.des <- svydesign(ids = ~ 1,  data = cces16_slim)
 cces16.des.ps <- postStratify(design = cces16.des,
                               strata = ~all_vars,
                               population = acs_cell_counts)
 
 
+
+
+acs_all_vars <- unique(acs_cell_counts_slim$all_vars);
+cces_all_vars <- unique(cces16_slim$all_vars);
+
+for(i in 1:length(cces_all_vars)){
+  cces_var <- cces_all_vars[i];
+  if(cces_var %in% acs_all_vars){
+    next();
+  }
+  else{
+    print(cces_var)
+  }
+}
 
