@@ -57,13 +57,31 @@ acs_cell_counts_slim <- acs_cell_counts %>%
 
 
 # create svydesign object
+# assume: SRS for illustrative purposes
 # if I use fpc = rep(sum(acs_cell_counts$n), nrow(cces16)), assume:
-# (1) SRS for illustrative purposes
-# (2) US population size = weighted sum from ACS --> 308532957, which may be off by 5-10 million
+# US population size = weighted sum from ACS --> 308532957, which may be off by 5-10 million
 
 cces16.des <- svydesign(ids = ~ 1, data = cces16_slim)
 cces16.des.ps <- postStratify(design = cces16.des,
                               strata = ~all_vars,
-                              population = acs_cell_counts)
+                              population = acs_cell_counts_slim,
+                              partial = TRUE)
+
+# test out results
+ps.res <- as.data.frame(svytable(~CC16_364c, design=cces16.des.ps)) %>% 
+  rename(preference=CC16_364c, share=Freq) %>% 
+  mutate(preference = case_when(preference == 1 ~ "Trump",
+                                preference == 2 ~ "Clinton",
+                                preference == 3 ~ "Johnson",
+                                preference == 4 ~ "Stein",
+                                preference == 5 ~ "Other",
+                                preference == 6 ~ "Won't vote",
+                                preference == 7 ~ "Not sure",
+                                preference %in% c(8,9) ~ "Skipped/not asked"),
+         share = share/sum(share))
+ps.res
+
+# compare to actual CCES weights
+
 
 
