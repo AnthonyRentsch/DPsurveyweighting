@@ -68,6 +68,11 @@ cces16.des.ps <- postStratify(design = cces16.des,
                               partial = TRUE)
 
 # test out results
+#### these give different answers so they are not equivalent ####
+#### I'm guessing 1st way is right ####
+#### ex: https://stats.idre.ucla.edu/r/faq/how-do-i-analyze-survey-data-with-stratification-after-sampling-poststratification/ ####
+#### test by making a svydesign object using just the 2016 CCES and computing same values ####
+
 ps.res <- as.data.frame(svytable(~CC16_364c, design=cces16.des.ps)) %>% 
   rename(preference=CC16_364c, share=Freq) %>% 
   mutate(preference = case_when(preference == 1 ~ "Trump",
@@ -80,6 +85,20 @@ ps.res <- as.data.frame(svytable(~CC16_364c, design=cces16.des.ps)) %>%
                                 preference %in% c(8,9) ~ "Skipped/not asked"),
          share = share/sum(share))
 ps.res
+
+cces16.w.weights <- as.data.frame(cces16_slim) 
+cces16.w.weights$weight <- cces16.des.ps$postStrata[[1]]
+cces16.w.weights %>% rename(preference=CC16_364c) %>% 
+  group_by(preference) %>% summarise(n = sum(weight)) %>% 
+  mutate(preference = case_when(preference == 1 ~ "Trump",
+                                preference == 2 ~ "Clinton",
+                                preference == 3 ~ "Johnson",
+                                preference == 4 ~ "Stein",
+                                preference == 5 ~ "Other",
+                                preference == 6 ~ "Won't vote",
+                                preference == 7 ~ "Not sure",
+                                preference %in% c(8,9) ~ "Skipped/not asked"),
+         share = n/sum(n)) %>% select(preference, share)
 
 # compare to actual CCES weights
 
