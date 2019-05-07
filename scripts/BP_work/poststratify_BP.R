@@ -16,17 +16,17 @@ cces16 <- read_tsv("CCES16_Common_OUTPUT_Jul2017_VV.tab", col_names = TRUE);
 
 # process CCES data. Variables we're interested in. Some variables are commented out because we're not using them
 weight_vars_cces <- c(#"gender", # sex
-                      #"birthyr", # age
-                      "educ", # education
-                      "race", # race
-                      #"employ", # employment status
-                      #"marstat", # marital status
-                      #"faminc", # family income
-                      #"child18num", # number of children under 18
-                      #"immstat", # citizenship status
-                      "inputstate" # state
-                      # metropolitan area
-                      ) 
+  #"birthyr", # age
+  "educ", # education
+  "race", # race
+  #"employ", # employment status
+  #"marstat", # marital status
+  #"faminc", # family income
+  #"child18num", # number of children under 18
+  #"immstat", # citizenship status
+  "inputstate" # state
+  # metropolitan area
+) 
 
 #format CCES data to get rid of some weird categories
 cces16 <- cces16 %>%
@@ -43,22 +43,21 @@ cces16 <- cces16 %>%
                           race %in% c(5,6,7,8,98,99,NA) ~ 5)
          )
 states <- data.frame(inputstate = seq(1:56), 
-                     state = tolower(c("AL","AK","","AZ","AR","CA","","CO","CT","DE","D.C.",
+                     state = tolower(c("AL","AK","","AZ","AR","CA","","CO","CT","DE","DC",
                                        "FL","GA","","HI","ID","IL","IN","IA","KS","KY","LA",
                                        "ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH",
                                        "NJ","NM","NY","NC","ND","OH","OK","OR","PA","","RI","SC",
                                        "SD","TN","TX","UT","VT","VA","","WA","WV","WI","WY")))
-cces16 <- left_join(cces16, states, by = "inputstate"); #put column of states into the CCES df
+cces16 <- left_join(cces16, states, by = "inputstate")
 
 cces16_slim <- cces16 %>% 
   mutate(all_vars = paste("state", state, "race", race, "education", education, sep="_")) %>% 
-  select(all_vars, CC16_364c) #column to select on is 2016 vote preference. values in the second column are categories for preference
-  
+  select(all_vars, CC16_364c)
+
 # process ACS data
 acs_cell_counts_slim <- acs_cell_counts %>% 
   mutate(all_vars = paste("state", state, "race", race, "education", education, sep="_")) %>% 
-  select(all_vars, n); #column is sum of the weights of the people with these demographics
-
+  select(all_vars, n)
 
 # create svydesign object
 # if I use fpc = rep(sum(acs_cell_counts$n), nrow(cces16)), assume:
@@ -67,10 +66,11 @@ acs_cell_counts_slim <- acs_cell_counts %>%
 
 #ids = ~ 1 means no clusters, every person has same probability of being sampled
 #pass in CCES data because that's the data we want weights for
-cces16.des <- svydesign(ids = ~ 1,  data = cces16_slim)
+cces16.des <- svydesign(ids = ~ 1, data = cces16_slim)
 cces16.des.ps <- postStratify(design = cces16.des,
                               strata = ~all_vars,
-                              population = acs_cell_counts)
+                              population = acs_cell_counts_slim,
+                              partial = TRUE)
 
 
 
