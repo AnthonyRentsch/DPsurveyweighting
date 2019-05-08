@@ -4,14 +4,14 @@
 
 # Set up
 rm(list = ls())
+setwd("~/Desktop/Harvard/S19/cs208/DPsurveyweighting")
 # install.packages("survey")
 require(plyr); require(dplyr); require(readr); require(survey)
-setwd("~/Desktop/Harvard/S19/cs208/DPsurveyweighting/data")
-acs_cell_counts <- read.csv("cell_counts_3var.csv")
-state_weights <- read.csv("state_weights.csv")
+source("scripts/dp_utils.R")
+acs_cell_counts <- read.csv("data/cell_counts_3var.csv")
+state_weights <- read.csv("data/state_weights.csv")
 acs_cell_counts <- acs_cell_counts[,-1]
-acs_cell_counts$rescaled_n <- acs_cell_counts$n/max(state_weights$max_weight)
-cces16 <- read_tsv("CCES16_Common_OUTPUT_Jul2017_VV.tab", col_names = TRUE)
+cces16 <- read_tsv("data/CCES16_Common_OUTPUT_Jul2017_VV.tab", col_names = TRUE)
 
 # process CCES data
 weight_vars_cces <- c(#"gender", # sex
@@ -53,6 +53,9 @@ cces16_slim <- cces16 %>%
   select(all_vars, CC16_364c)
   
 # process ACS data
+# rescale weights by diving by the max weight for any individual in any state
+acs_cell_counts$rescaled_n <- acs_cell_counts$n/max(state_weights$max_weight)
+
 acs_cell_counts_slim <- acs_cell_counts %>% 
   mutate(all_vars = paste("state", state, "race", race, "education", education, sep="_")) %>% 
   select(all_vars, rescaled_n)
@@ -60,22 +63,14 @@ acs_cell_counts_slim <- acs_cell_counts %>%
 
 # create svydesign object
 # assume SRS for illustrative purposes
-# if I use fpc = rep(sum(acs_cell_counts$n), nrow(cces16)), assume:
-# US population size = weighted sum from ACS --> 308532957, which may be off by 5-10 million
-
 cces16.des <- svydesign(ids = ~ 1, data = cces16_slim)
 cces16.des.ps <- postStratify(design = cces16.des,
                               strata = ~all_vars,
                               population = acs_cell_counts_slim,
                               partial = TRUE)
 
-# test out results
-#### these give different answers so they are not equivalent ####
-#### I'm guessing 1st way is right ####
-#### ex: https://stats.idre.ucla.edu/r/faq/how-do-i-analyze-survey-data-with-stratification-after-sampling-poststratification/ ####
-#### test by making a svydesign object using just the 2016 CCES and computing same values ####
-
-ps.res.svytable <- as.data.frame(svytable(~CC16_364c, design=cces16.des.ps)) %>% 
+# 
+voteshare.weighted <- as.data.frame(svytable(~CC16_364c, design=cces16.des.ps)) %>% 
   rename(preference=CC16_364c, share=Freq) %>% 
   mutate(preference = case_when(preference == 1 ~ "Trump",
                                 preference == 2 ~ "Clinton",
@@ -86,24 +81,10 @@ ps.res.svytable <- as.data.frame(svytable(~CC16_364c, design=cces16.des.ps)) %>%
                                 preference == 7 ~ "Not sure",
                                 preference %in% c(8,9, NA) ~ "Skipped/not asked"),
          share = share/sum(share))
-ps.res.svytable
-
-cces16.w.ps.weights <- as.data.frame(cces16_slim) 
-cces16.w.ps.weights$weight <- cces16.des.ps$postStrata[[1]]
-cces16.w.ps.weights %>% rename(preference=CC16_364c) %>% 
-  mutate(preference = case_when(preference == 1 ~ "Trump",
-                                preference == 2 ~ "Clinton",
-                                preference == 3 ~ "Johnson",
-                                preference == 4 ~ "Stein",
-                                preference == 5 ~ "Other",
-                                preference == 6 ~ "Won't vote",
-                                preference == 7 ~ "Not sure",
-                                preference %in% c(8,9, NA) ~ "Skipped/not asked")) %>% 
-  group_by(preference) %>% summarise(n = sum(weight)) %>% 
-  mutate(share = n/sum(n)) %>% select(preference, share)
+voteshare.weighted
 
 # unweighted counts
-cces16 %>% rename(preference=CC16_364c) %>% 
+unweighted.res <- cces16 %>% rename(preference=CC16_364c) %>% 
   group_by(preference) %>% summarise(n = n()) %>% 
   mutate(preference = case_when(preference == 1 ~ "Trump",
                                 preference == 2 ~ "Clinton",
@@ -114,9 +95,11 @@ cces16 %>% rename(preference=CC16_364c) %>%
                                 preference == 7 ~ "Not sure",
                                 preference %in% c(8,9, NA) ~ "Skipped/not asked"),
          share = n/sum(n)) %>% select(preference, share) 
+unweighted.res
 
 
-# compare to actual CCES weights (for appendix)
+# Appendix
+# compare to actual CCES weights
 # cces.16.actual.des <- svydesign(ids = ~1, data = cces16, weights = ~commonweight)
 # cces16.actual.svytable <- as.data.frame(svytable(~CC16_364c, design=cces.16.actual.des)) %>% 
 #   rename(preference=CC16_364c, share=Freq) %>% 
