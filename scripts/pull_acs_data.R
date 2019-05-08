@@ -1,7 +1,6 @@
 ###########
 # Grab and process ACS data
-# Expected runtime for 8 variables: 1 hour 25 minutes
-# Expected runtime for 3 variables: 50 minutes
+# Expected runtime: 50 minutes
 ###########
 
 # Set up
@@ -50,7 +49,7 @@ state_weights <- matrix(NA, nrow=length(states), ncol=3)
 i <- 1
 start_time <- Sys.time()
 
-for(state in states[1]) {
+for(state in states) {
   cat("State:", state)
   # grab ACS data for a state
   state_person_data <- get_acs_data(state)
@@ -86,7 +85,7 @@ for(state in states[1]) {
   # get cell counts 
   state_cell_counts <- get_weighted_cell_counts(state_person_data, weight_var=person_weight,
                                                 "ST","age","citizen","marital","education",
-                                                "employment","race","SEX")
+                                                "employment","race","sex")
   # append state abbrevation
   state_cell_counts$state <- state
   # add df to list of dfs
@@ -128,13 +127,3 @@ write.csv(state_weights_df, file=state_weights_file_name)
 # hincp - household income, in household file
 # noc - number of own children in household, in household file
 # metropolitan - ?
-
-### variable processing for 8 variables
-### will have to update to reflect CCES vars
-
-
-
-
-
-
-
