@@ -48,14 +48,16 @@ states <- data.frame(inputstate = seq(1:56),
                                        "SD","TN","TX","UT","VT","VA","","WA","WV","WI","WY")))
 cces16 <- left_join(cces16, states, by = "inputstate")
 
-cces16_slim <- cces16 %>% 
-  mutate(all_vars = paste("state", state, "race", race, "education", education, sep="_")) %>% 
-  select(all_vars, CC16_364c)
+# cces16_slim <- cces16 %>% 
+#   mutate(all_vars = paste("state", state, "race", race, "education", education, sep="_")) %>% 
+#   select(all_vars, CC16_364c)
   
 # process ACS data
-acs_cell_counts_slim <- acs_cell_counts %>% 
-  mutate(all_vars = paste("state", state, "race", race, "education", education, sep="_")) %>% 
-  select(all_vars, n)
+# acs_cell_counts_slim <- acs_cell_counts %>% 
+#   mutate(all_vars = paste("state", state, "race", race, "education", education, sep="_")) %>% 
+#   select(all_vars, n)
+acs_cell_counts_slim <- acs_cell_counts[, c('state', 'n','race', 'education' )]
+
 
 
 # create svydesign object
@@ -63,9 +65,10 @@ acs_cell_counts_slim <- acs_cell_counts %>%
 # if I use fpc = rep(sum(acs_cell_counts$n), nrow(cces16)), assume:
 # US population size = weighted sum from ACS --> 308532957, which may be off by 5-10 million
 
-cces16.des <- svydesign(ids = ~ 1, data = cces16_slim)
+# cces16.des <- svydesign(ids = ~ 1, data = cces16_slim)
+cces16.des <- svydesign(ids = ~ 1, data = cces16)
 cces16.des.ps <- postStratify(design = cces16.des,
-                              strata = ~all_vars,
+                              strata = ~state+race+education,
                               population = acs_cell_counts_slim,
                               partial = TRUE)
 
