@@ -55,14 +55,14 @@ for(state in states) {
   state_person_data <- get_acs_data(state)
   # pre-process
   state_person_data <- state_person_data %>% 
-    mutate(age = case_when(AGEP >=0 | AGEP < 18 ~ 1,
-                            AGEP >= 18 | AGEP < 28 ~ 2,
-                            AGEP >= 28 | AGEP < 38 ~ 3,
-                            AGEP >= 38 | AGEP < 48 ~ 4,
-                            AGEP >= 48 | AGEP < 58 ~ 5,
-                            AGEP >= 58 | AGEP < 68 ~ 6,
-                            AGEP >= 68 | AGEP < 78 ~ 7,
-                            AGEP >= 78 | AGEP < 88 ~ 8,
+    mutate(age = case_when(AGEP >=0 & AGEP < 18 ~ 1,
+                            AGEP >= 18 & AGEP < 28 ~ 2,
+                            AGEP >= 28 & AGEP < 38 ~ 3,
+                            AGEP >= 38 & AGEP < 48 ~ 4,
+                            AGEP >= 48 & AGEP < 58 ~ 5,
+                            AGEP >= 58 & AGEP < 68 ~ 6,
+                            AGEP >= 68 & AGEP < 78 ~ 7,
+                            AGEP >= 78 & AGEP < 88 ~ 8,
                             AGEP >= 88 ~ 9),
            citizen = case_when(CIT %in% c(1,2,3,4) ~ 1,
                            CIT == 5 ~ 2),

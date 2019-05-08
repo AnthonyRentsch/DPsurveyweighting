@@ -8,7 +8,7 @@ setwd("~/Desktop/Harvard/S19/cs208/DPsurveyweighting")
 # install.packages("survey")
 require(plyr); require(dplyr); require(readr); require(survey)
 source("scripts/dp_utils.R")
-acs_cell_counts <- read.csv("data/cell_counts_3var.csv")
+acs_cell_counts <- read.csv("data/cell_counts_8var.csv")
 state_weights <- read.csv("data/state_weights.csv")
 acs_cell_counts <- acs_cell_counts[,-1]
 cces16 <- read_tsv("data/CCES16_Common_OUTPUT_Jul2017_VV.tab", col_names = TRUE)
@@ -41,19 +41,19 @@ cces16 <- cces16 %>%
                           race %in% c(5,6,7,8,98,99,NA) ~ 5),
          sex = gender,
          age = case_when(2016-birthyr < 18 | is.na(birthyr) ~ 1,
-                         2016-birthyr >= 18 | 2016-birthyr < 28 ~ 2,
-                         2016-birthyr >= 28 | 2016-birthyr < 38 ~ 3,
-                         2016-birthyr >= 38 | 2016-birthyr < 48 ~ 4,
-                         2016-birthyr >= 48 | 2016-birthyr < 58 ~ 5,
-                         2016-birthyr >= 58 | 2016-birthyr < 68 ~ 6,
-                         2016-birthyr >= 68 | 2016-birthyr < 78 ~ 7,
-                         2016-birthyr >= 78 | 2016-birthyr < 88 ~ 8,
+                         2016-birthyr >= 18 & 2016-birthyr < 28 ~ 2,
+                         2016-birthyr >= 28 & 2016-birthyr < 38 ~ 3,
+                         2016-birthyr >= 38 & 2016-birthyr < 48 ~ 4,
+                         2016-birthyr >= 48 & 2016-birthyr < 58 ~ 5,
+                         2016-birthyr >= 58 & 2016-birthyr < 68 ~ 6,
+                         2016-birthyr >= 68 & 2016-birthyr < 78 ~ 7,
+                         2016-birthyr >= 78 & 2016-birthyr < 88 ~ 8,
                          2016-birthyr >= 88 ~ 9),
          employment = case_when(employ %in% c(1,2) ~ 1,
-                                employ %in% c(3,4,5,6,7,8,NA) ~ 2),
+                                employ %in% c(3,4,5,6,7,8,9) | is.na(employ) ~ 2),
          marital = case_when(marstat == 1 ~ 1,
                              marstat != 1 ~ 2),
-         citizen = case_when(immstat != 2 ~ 1,
+         citizen = case_when(immstat != 2 | is.na(immstat) ~ 1,
                              immstat == 2 ~ 2)
          )
 states <- data.frame(inputstate = seq(1:56), 
@@ -64,18 +64,57 @@ states <- data.frame(inputstate = seq(1:56),
                                        "SD","TN","TX","UT","VT","VA","","WA","WV","WI","WY")))
 cces16 <- left_join(cces16, states, by = "inputstate")
 
-cces16_slim <- cces16 %>% select(state, education, race, CC16_364c, CC16_301a)
+cces16_slim <- cces16 %>% 
+  mutate(preference = case_when(CC16_364c == 1 ~ "Trump",
+                                CC16_364c == 2 ~ "Clinton",
+                                CC16_364c == 3 ~ "Johnson",
+                                CC16_364c == 4 ~ "Stein",
+                                CC16_364c == 5 ~ "Other",
+                                CC16_364c == 6 ~ "Won't vote",
+                                CC16_364c %in% c(7,8,9) | is.na(CC16_364c) ~ "No response"),
+         gun_control_stance = case_when(CC16_301a == 1 ~ "Very high importantance",
+                                        CC16_301a == 2 ~ "Somewhat high importantance",
+                                        CC16_301a == 3 ~ "Some what low importantance",
+                                        CC16_301a == 4 ~ "Very low importantance",
+                                        CC16_301a == 5 ~ "No importantance at all",
+                                        CC16_301a %in% c(8,9) | is.na(CC16_301a) ~ "No response")
+         ) %>% 
+  select(state, education, race, sex, age, employment, 
+         marital, citizen, preference, gun_control_stance) 
   
 # process ACS data
 # rescale weights by diving by the max weight for any individual in any state
 acs_cell_counts$rescaled_n <- acs_cell_counts$n/max(state_weights$max_weight)
-acs_cell_counts_slim <- acs_cell_counts %>% select(state, education, race, rescaled_n) #***
+acs_cell_counts_slim <- acs_cell_counts %>% select(state, education, race, sex, age, 
+                                                   employment, marital, citizen, rescaled_n) 
+
+###
+###
+###
+cces_combos = cces16 %>% mutate(all_vars = paste("state", state, "race", race, "sex", sex,
+                                                 "age", age, "employment", employment, 
+                                                 "marital", marital, "citizen", citizen, 
+                                                 "education", education,
+                                                 sep="_")) %>% 
+  select(all_vars) %>% unique()
+acs_combos = acs_cell_counts %>% mutate(all_vars = paste("state", state, "race", race, "sex", sex,
+                                                 "age", age, "employment", employment, 
+                                                 "marital", marital, "citizen", citizen, 
+                                                 "education", education,
+                                                 sep="_")) %>% 
+  select(all_vars) %>% unique()
+
+cces_combos$all_vars %in% acs_combos$all_vars
+###
+###
+###
+
 
 # create svydesign object
 # assume SRS for illustrative purposes
 cces16.des <- svydesign(ids = ~ 1, data = cces16_slim)
 cces16.des.ps <- postStratify(design = cces16.des,
-                              strata = ~state+race+education,
+                              strata = ~state+race+education+sex+age+employment+marital+citizen,
                               population = acs_cell_counts_slim,
                               partial = TRUE)
 
