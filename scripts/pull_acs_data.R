@@ -7,17 +7,17 @@
 rm(list = ls())
 require(plyr); require(dplyr)
 setwd("~/Desktop/Harvard/S19/cs208/DPsurveyweighting/data/")
-cell_counts_file_name = "cell_counts_8var.csv"
+cell_counts_file_name = "cell_counts_5var.csv"
 state_weights_file_name = "state_weights.csv"
 
 states <- tolower(c(state.abb, "DC"))
 person_vars <- c("ST",
                  "AGEP",
-                 "CIT",
-                 "MAR",
+                 #"CIT",
+                 #"MAR",
                  "SCHL",
                  "SEX",
-                 "ESR",
+                 #"ESR",
                  "RAC1P"
                  #"PAOC",
                  #"PINCP"
@@ -56,26 +56,22 @@ for(state in states) {
   # pre-process
   state_person_data <- state_person_data %>% 
     mutate(age = case_when(AGEP >=0 & AGEP < 18 ~ 1,
-                            AGEP >= 18 & AGEP < 28 ~ 2,
-                            AGEP >= 28 & AGEP < 38 ~ 3,
-                            AGEP >= 38 & AGEP < 48 ~ 4,
-                            AGEP >= 48 & AGEP < 58 ~ 5,
-                            AGEP >= 58 & AGEP < 68 ~ 6,
-                            AGEP >= 68 & AGEP < 78 ~ 7,
-                            AGEP >= 78 & AGEP < 88 ~ 8,
-                            AGEP >= 88 ~ 9),
-           citizen = case_when(CIT %in% c(1,2,3,4) ~ 1,
-                           CIT == 5 ~ 2),
-           marital = case_when(MAR == 1 ~ 1,
-                           MAR != 1 ~ 2),
+                            AGEP >= 18 & AGEP < 35 ~ 2,
+                            AGEP >= 35 & AGEP < 50 ~ 3,
+                            AGEP >= 50 & AGEP < 65 ~ 4,
+                            AGEP >= 65 ~ 5),
+           # citizen = case_when(CIT %in% c(1,2,3,4) ~ 1,
+           #                 CIT == 5 ~ 2),
+           # marital = case_when(MAR == 1 ~ 1,
+           #                 MAR != 1 ~ 2),
            education = case_when(SCHL %in% c(seq(1,15,by=1), NA) ~ 1,
                             SCHL %in% c(16,17) ~ 2,
                             SCHL %in% c(18,19) ~ 3,
                             SCHL == 20 ~ 4,
                             SCHL == 21 ~ 5,
                             SCHL %in% c(22,23,24) ~ 6),
-           employment = case_when(ESR %in% c(1,2,4,5) ~ 1,
-                           ESR %in% c(NA,3,6) ~ 2),
+           # employment = case_when(ESR %in% c(1,2,4,5) ~ 1,
+           #                 ESR %in% c(NA,3,6) ~ 2),
            race = case_when(RAC1P == 1 & HISP == 1 ~ 1,
                              RAC1P == 2 & HISP == 1 ~ 2,
                              HISP != 1 ~ 3,
@@ -84,8 +80,8 @@ for(state in states) {
            ) %>% rename(sex=SEX)
   # get cell counts 
   state_cell_counts <- get_weighted_cell_counts(state_person_data, weight_var=person_weight,
-                                                "ST","age","citizen","marital","education",
-                                                "employment","race","sex")
+                                                "ST","age","education","race","sex")
+                                                #"citizen","marital","employment"
   # append state abbrevation
   state_cell_counts$state <- state
   # add df to list of dfs

@@ -104,7 +104,7 @@ acs_combos = acs_cell_counts %>% mutate(all_vars = paste("state", state, "race",
                                                  sep="_")) %>% 
   select(all_vars) %>% unique()
 
-cces_combos$all_vars %in% acs_combos$all_vars
+cces_combos[which(!cces_combos$all_vars %in% acs_combos$all_vars),] %>% View()
 ###
 ###
 ###
