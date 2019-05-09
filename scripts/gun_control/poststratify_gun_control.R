@@ -68,14 +68,11 @@ cces16_slim <- cces16 %>%
                                 CC16_364c == 5 ~ "Other",
                                 CC16_364c == 6 ~ "Won't vote",
                                 CC16_364c %in% c(7,8,9) | is.na(CC16_364c) ~ "No response"),
-         gun_control_stance = case_when(CC16_301a == 1 ~ "Very high importance",
-                                        CC16_301a == 2 ~ "Somewhat high importance",
-                                        CC16_301a == 3 ~ "Some what low importance",
-                                        CC16_301a == 4 ~ "Very low importantance",
-                                        CC16_301a == 5 ~ "No importance at all",
-                                        CC16_301a %in% c(8,9) | is.na(CC16_301a) ~ "No response")
+         ban_rifle_stance = case_when(CC16_330d == 1 ~ "Support",
+                                        CC16_330d == 2 ~ "Oppose",
+                                        CC16_330d %in% c(8,9) | is.na(CC16_330d) ~ "No response")
          ) %>% 
-  select(state, education, race, sex, age, preference, gun_control_stance) 
+  select(state, education, race, sex, age, preference, ban_rifle_stance) 
   
 # process ACS data
 # rescale weights by diving by the max weight for any individual in any state
@@ -106,13 +103,13 @@ cces16.des.ps <- postStratify(design = cces16.des,
                               partial = TRUE)
 
 #weight CCES respondents to true ACS counts. Get gun control stance based on race
-true.weighted.res <- as.data.frame(svytable(~gun_control_stance+race, design=cces16.des.ps)) %>% 
+true.weighted.res <- as.data.frame(svytable(~ban_rifle_stance+race, design=cces16.des.ps)) %>% 
   mutate(race = case_when(race == 1 ~ "White",
                           race == 2 ~ "Black",
                           race == 3 ~ "Hispanic",
                           race == 4 ~ "Asian",
                           race == 5 ~ "Other")) %>% 
-  group_by(race) %>% mutate(share = Freq/sum(Freq)) %>% select(race, gun_control_stance, share)
+  group_by(race) %>% mutate(share = Freq/sum(Freq)) %>% select(race, ban_rifle_stance, share)
 # true.weighted.res %>% View()
 
 # unweighted
