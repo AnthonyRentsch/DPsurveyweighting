@@ -103,58 +103,90 @@ unweighted.res <- as.data.frame(svytable(~CC16_364c+race, design=cces16.unweight
   group_by(race) %>% mutate(share = share/sum(share))
 unweighted.res %>% View()
 
-# weighted to noisy ACS
+
+##### weighted to noisy ACS
+num_sims = 5; #number of releases to perform for each epsilon
 epsilon <- 0.5
 scale <- max(state_weights$max_weight)/epsilon; #calculate scale for adding Laplace noise
-noisy_acs <- acs_cell_counts_slim
-noisy_acs$noisy_n <- noisy_acs$rescaled_n + rlap(mu=0, b=scale, size=nrow(noisy_acs));
-#change DP count to 1 if it is less than 0
-noisy_acs$noisy_n <- ifelse(noisy_acs$noisy_n < 0, 1, noisy_acs$noisy_n);
-noisy_acs <- noisy_acs %>% select(state, education, race, noisy_n) #***
+noisy_acs <- noisy_acs %>% select("state", "education")
+combined <- voteshare.weighted; #dataframe to store results
+colnames(combined) <- c("preference", "race", 'share_true');
+
+for(i in 1:num_sims){
+  #add Laplace noise to ACS cell counts
+  noisy_acs <- acs_cell_counts_slim
+  noisy_acs$noisy_n <- noisy_acs$rescaled_n + rlap(mu=0, b=scale, size=nrow(noisy_acs));
+  
+  #change DP count to 1 if it is less than 0
+  noisy_acs$noisy_n <- ifelse(noisy_acs$noisy_n < 0, 1, noisy_acs$noisy_n);
+  noisy_acs <- noisy_acs %>% select(state, education, race, noisy_n) #trim noisy_acs df to only the relevant columns
+  cces16.noisy.des <- svydesign(ids = ~ 1, data = cces16_slim); #create survey design object using CCES data we want weights for
+  cces16.noisy.des.ps <- postStratify(design = cces16.des, #get post-strafication weights
+                                      strata = ~state+race+education,
+                                      population = noisy_acs,
+                                      partial = TRUE);
+  #calculate the vote share for each candidate based on race
+  voteshare.noisy.weighted <- as.data.frame(svytable(~CC16_364c+race, design=cces16.noisy.des.ps)) %>% 
+    rename(preference=CC16_364c, share=Freq) %>% 
+    mutate(preference = case_when(preference == 1 ~ "Trump",
+                                  preference == 2 ~ "Clinton",
+                                  preference == 3 ~ "Johnson",
+                                  preference == 4 ~ "Stein",
+                                  preference == 5 ~ "Other",
+                                  preference == 6 ~ "Won't vote",
+                                  preference == 7 ~ "Not sure",
+                                  preference %in% c(8,9, NA) ~ "Skipped/not asked"),
+           race = case_when(race == 1 ~ "White",
+                            race == 2 ~ "Black",
+                            race == 3 ~ "Hispanic",
+                            race == 4 ~ "Asian",
+                            race == 5 ~ "Other")) %>% 
+    group_by(race) %>% mutate(share = share/sum(share));
+  
+  colnames(voteshare.noisy.weighted) <- c("preference", "race", paste("share_noisy",i, sep=""));
+  
+  combined <- merge(combined, voteshare.noisy.weighted, 
+                    by=c("preference", "race"))
+  
+}
 
 
-cces16.noisy.des <- svydesign(ids = ~ 1, data = cces16_slim)
-cces16.noisy.des.ps <- postStratify(design = cces16.des,
-                              strata = ~state+race+education,
-                              population = noisy_acs,
-                              partial = TRUE)
+combined_trim <- combined[combined$preference == "Clinton" | combined$preference == "Trump", ];
+races <- c("White", "Black", "Hispanic", "Asian", "Other");
+rmse_results <- matrix(NA, nrow = length(races), ncol = 2)
+for(r in 1:length(races) ){
+  
+  # r = 1;
+  race <- races[r];
+  #get clinton data
+  clinton <- combined_trim[combined_trim$preference== "Clinton" & combined_trim$race == race, ];
+  clinton_true <- clinton[, 3];
+  clinton_noisy <- as.numeric(clinton[, 4:(4+num_sims-1)]);
+  #get trump data
+  trump <- combined_trim[combined_trim$preference== "Trump" & combined_trim$race == race, ];
+  trump_true <- trump[, 3];
+  trump_noisy <- as.numeric(trump[, 4:(4+num_sims-1)]);
+  #calculate the rmse for difference
+  true_dif <- clinton_true - trump_true; #calculate true difference
+  noisy_difs <- clinton_noisy - trump_noisy;
+  mse <- mean( (true_dif - noisy_difs)^2 );
+  rmse <- sqrt(mse);
+  
+  rmse_results[r, ] <- c(race, rmse);
+  
+  
+  
+}
 
-voteshare.noisy.weighted <- as.data.frame(svytable(~CC16_364c+race, design=cces16.noisy.des.ps)) %>% 
-  rename(preference=CC16_364c, share=Freq) %>% 
-  mutate(preference = case_when(preference == 1 ~ "Trump",
-                                preference == 2 ~ "Clinton",
-                                preference == 3 ~ "Johnson",
-                                preference == 4 ~ "Stein",
-                                preference == 5 ~ "Other",
-                                preference == 6 ~ "Won't vote",
-                                preference == 7 ~ "Not sure",
-                                preference %in% c(8,9, NA) ~ "Skipped/not asked"),
-         race = case_when(race == 1 ~ "White",
-                          race == 2 ~ "Black",
-                          race == 3 ~ "Hispanic",
-                          race == 4 ~ "Asian",
-                          race == 5 ~ "Other")) %>% 
-  group_by(race) %>% mutate(share = share/sum(share))
-voteshare.noisy.weighted %>% View()
+rmse_results
+
+
+
+
 
 
 # combine to compare private versus non-private release
-combined <- merge(voteshare.weighted, voteshare.noisy.weighted, 
-                  by=c("preference", "race"), suffixes=c("_true", "_noisy"))
+# combined <- merge(voteshare.weighted, voteshare.noisy.weighted, 
+#                   by=c("preference", "race"), suffixes=c("_true", "_noisy"))
 
 
-# Appendix
-# compare to actual CCES weights
-# cces.16.actual.des <- svydesign(ids = ~1, data = cces16, weights = ~commonweight)
-# cces16.actual.svytable <- as.data.frame(svytable(~CC16_364c, design=cces.16.actual.des)) %>%
-#   rename(preference=CC16_364c, share=Freq) %>%
-#   mutate(preference = case_when(preference == 1 ~ "Trump",
-#                                 preference == 2 ~ "Clinton",
-#                                 preference == 3 ~ "Johnson",
-#                                 preference == 4 ~ "Stein",
-#                                 preference == 5 ~ "Other",
-#                                 preference == 6 ~ "Won't vote",
-#                                 preference == 7 ~ "Not sure",
-#                                 preference %in% c(8,9) ~ "Skipped/not asked"),
-#          share = share/sum(share))
-# cces16.actual.svytable
