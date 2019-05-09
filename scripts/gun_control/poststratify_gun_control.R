@@ -60,7 +60,8 @@ states <- data.frame(inputstate = seq(1:56),
                                        "SD","TN","TX","UT","VT","VA","","WA","WV","WI","WY")))
 cces16 <- left_join(cces16, states, by = "inputstate")
 
-cces16_slim <- cces16 %>% 
+
+cces16_slim <- cces16 %>%
   mutate(preference = case_when(CC16_364c == 1 ~ "Trump",
                                 CC16_364c == 2 ~ "Clinton",
                                 CC16_364c == 3 ~ "Johnson",
@@ -71,13 +72,17 @@ cces16_slim <- cces16 %>%
          ban_rifle_stance = case_when(CC16_330d == 1 ~ "Support",
                                         CC16_330d == 2 ~ "Oppose",
                                         CC16_330d %in% c(8,9) | is.na(CC16_330d) ~ "No response")
-         ) %>% 
-  select(state, education, race, sex, age, preference, ban_rifle_stance) 
+         ) %>%
+  select(state, education, race, sex, preference, age, ban_rifle_stance); #+age,
+#factorize the CCES age categories to be from 1-5
+# cces16_slim$age <- factor(cces16_slim$age, levels = c(1,2,3,4,5));
   
 # process ACS data
 # rescale weights by diving by the max weight for any individual in any state
 acs_cell_counts$rescaled_n <- acs_cell_counts$n/max(state_weights$max_weight)
-acs_cell_counts_slim <- acs_cell_counts %>% select(state, education, race, sex, age, rescaled_n) 
+acs_cell_counts_slim <- acs_cell_counts %>% select(state, education, race, sex, age, rescaled_n); #+age,
+# acs_cell_counts_slim$age <- factor(acs_cell_counts_slim$age, levels = c(1,2,3,4,5));
+# acs_cell_counts_slim <- acs_cell_counts_slim[acs_cell_counts_slim$age != 1, ]; #remove rows with age==1
 
 # check if any people in CCES have demographic combinations not in ACS
 # will delete these
