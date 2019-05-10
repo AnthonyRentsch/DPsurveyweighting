@@ -9,8 +9,8 @@ setwd("~/Desktop/Harvard/S19/cs208/DPsurveyweighting")
 require(plyr); require(dplyr); require(ggplot2); require(readr); require(survey)
 source("scripts/dp_utils.R")
 acs_cell_counts <- read.csv("data/cell_counts_5var.csv")
-state_weights <- read.csv("data/state_weights.csv")
 acs_cell_counts <- acs_cell_counts[,-1]
+state_weights <- read.csv("data/state_weights.csv")
 cces16 <- read_tsv("data/CCES16_Common_OUTPUT_Jul2017_VV.tab", col_names = TRUE)
 
 # process CCES data
@@ -80,7 +80,10 @@ cces16_slim <- cces16 %>%
 # process ACS data
 # rescale weights by diving by the max weight for any individual in any state
 acs_cell_counts$rescaled_n <- acs_cell_counts$n/max(state_weights$max_weight)
-acs_cell_counts_slim <- acs_cell_counts %>% select(state, education, race, sex, age, rescaled_n) 
+acs_cell_counts_slim <- acs_cell_counts %>% select(state, education, race, sex, age, 
+                                                   n
+                                                   #rescaled_n
+                                                   ) 
 
 # check if any people in CCES have demographic combinations not in ACS
 # will delete these
