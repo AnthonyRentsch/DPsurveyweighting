@@ -4,7 +4,8 @@
 
 # Set up
 rm(list = ls())
-setwd("~/Desktop/Harvard/S19/cs208/DPsurveyweighting")
+# setwd("~/Desktop/Harvard/S19/cs208/DPsurveyweighting")
+setwd("~/Desktop/Bhaven/Harvard/Classes/CS208/DPsurveyweighting/");
 # install.packages("survey")
 require(plyr); require(dplyr); require(ggplot2); require(readr); require(survey)
 source("scripts/dp_utils.R")
