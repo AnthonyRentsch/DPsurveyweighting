@@ -138,7 +138,7 @@ for (epsilon in epsilons) {
   for (iter in 1:num_iter) {
     
     # set up noisy ACS counts
-    scale <- max(state_weights$max_weight)/epsilon
+    scale <- 2*max(state_weights$max_weight)/epsilon
     noisy_acs <- acs_cell_counts_slim
     noisy_acs$noisy_n <- noisy_acs$n + rlap(mu=0, b=scale, size=nrow(noisy_acs))
     noisy_acs$noisy_n <- ifelse(noisy_acs$noisy_n < 0, 1, noisy_acs$noisy_n)
@@ -181,8 +181,9 @@ for (epsilon in epsilons) {
 }
 
 results.vs.df <- as.data.frame(results.vs)
-names(results.vs.df) <- c("race", "epsilon", "iteration", "two_party_dif_noisy_weight", 
-                       "two_party_dif_true_weight", "two_party_dif_no_weight")
+names(results.vs.df) <- c("race", "epsilon", "iteration", 
+                       "two_party_dif_noisy_weight", "two_party_dif_true_weight", 
+                       "two_party_dif_no_weight")
 results.vs.df <- results.vs.df %>% 
   mutate(epsilon = as.numeric(as.character(epsilon)),
          two_party_dif_noisy_weight = as.numeric(as.character(two_party_dif_noisy_weight)),
@@ -200,7 +201,7 @@ vote_share_difs_race <- ggplot(data=avg.results.vs.df, aes(x=epsilon)) +
   geom_line(aes(y=(avg_two_party_dif_noisy_weight-avg_two_party_dif_true_weight)*100)) +
   facet_wrap(~race, nrow=1) + 
   coord_cartesian(ylim=c(-2,2)) + 
-  labs(x="Epsilon", y="Difference between weighted two-party vote share\ndifference between DP and non-DP ACS release") +
+  labs(x="Epsilon", y="Difference between weighted two-party vote share\ndifference between DP and non-DP ACS release\n(% points)") +
   theme_bw()
 pdf("plots/vote_share_difs_race.pdf", width=10, height=5)
 vote_share_difs_race
@@ -240,7 +241,7 @@ for (epsilon in epsilons) {
   for (iter in 1:num_iter) {
     
     # set up noisy ACS counts
-    scale <- max(state_weights$max_weight)/epsilon
+    scale <- 2*max(state_weights$max_weight)/epsilon
     noisy_acs <- acs_cell_counts_slim
     noisy_acs$noisy_n <- noisy_acs$n + rlap(mu=0, b=scale, size=nrow(noisy_acs))
     noisy_acs$noisy_n <- ifelse(noisy_acs$noisy_n < 0, 1, noisy_acs$noisy_n)
@@ -315,9 +316,13 @@ assault_rifle_ban_difs_education
 dev.off()
 
 # Appendix
-# compare to actual CCES weights
+# compare our "true" weights to actual CCES weights
+
+## 
+# VOTE SHARE BY RACE 
+### 
 # cces.16.actual.des <- svydesign(ids = ~1, data = cces16, weights = ~commonweight)
-# cces16.actual.svytable <- as.data.frame(svytable(~CC16_364c, design=cces.16.actual.des)) %>%
+# cces16.actual.vs <- as.data.frame(svytable(~CC16_364c+race, design=cces.16.actual.des)) %>%
 #   rename(preference=CC16_364c, share=Freq) %>%
 #   mutate(preference = case_when(preference == 1 ~ "Trump",
 #                                 preference == 2 ~ "Clinton",
@@ -327,5 +332,18 @@ dev.off()
 #                                 preference == 6 ~ "Won't vote",
 #                                 preference == 7 ~ "Not sure",
 #                                 preference %in% c(8,9) ~ "Skipped/not asked"),
-#          share = share/sum(share))
-# cces16.actual.svytable
+#          race = case_when(race == 1 ~ "White",
+#                                  race == 2 ~ "Black",
+#                                  race == 3 ~ "Hispanic",
+#                                  race == 4 ~ "Asian",
+#                                  race == 5 ~ "Other")) %>% 
+#            group_by(race) %>% mutate(share = share/sum(share)) %>% select(race, preference, share)
+# 
+# compare.vs <- merge(cces16.actual.vs, true.weighted.res.vs, by=c("race","preference"),
+#                         suffixes=c("_actual","_estimate")) %>% 
+#   filter(preference %in% c("Clinton","Trump"))
+# 
+# compare.vs %>% group_by(race) %>% 
+#   mutate(net_actual = share_actual - lead(share_actual, default = first(share_actual)),
+#          net_estimate = share_estimate - lead(share_estimate, default = first(share_estimate))) %>% 
+#   filter(preference=="Clinton") %>% select(race, net_actual, net_estimate) %>% View()
