@@ -4,14 +4,13 @@
 
 # Set up
 rm(list = ls())
-# setwd("~/Desktop/Harvard/S19/cs208/DPsurveyweighting")
-setwd("~/Desktop/Bhaven/Harvard/Classes/CS208/DPsurveyweighting/");
+setwd("~/Desktop/Bhaven/Harvard/Classes/CS208/DPsurveyweighting/")
 # install.packages("survey")
 require(plyr); require(dplyr); require(ggplot2); require(readr); require(survey)
 source("scripts/dp_utils.R")
 acs_cell_counts <- read.csv("data/cell_counts_5var.csv")
-acs_cell_counts <- acs_cell_counts[,-1]
 state_weights <- read.csv("data/state_weights.csv")
+acs_cell_counts <- acs_cell_counts[,-1]
 cces16 <- read_tsv("data/CCES16_Common_OUTPUT_Jul2017_VV.tab", col_names = TRUE)
 
 # process CCES data
@@ -61,7 +60,8 @@ states <- data.frame(inputstate = seq(1:56),
                                        "SD","TN","TX","UT","VT","VA","","WA","WV","WI","WY")))
 cces16 <- left_join(cces16, states, by = "inputstate")
 
-cces16_slim <- cces16 %>% 
+
+cces16_slim <- cces16 %>%
   mutate(preference = case_when(CC16_364c == 1 ~ "Trump",
                                 CC16_364c == 2 ~ "Clinton",
                                 CC16_364c == 3 ~ "Johnson",
@@ -69,22 +69,20 @@ cces16_slim <- cces16 %>%
                                 CC16_364c == 5 ~ "Other",
                                 CC16_364c == 6 ~ "Won't vote",
                                 CC16_364c %in% c(7,8,9) | is.na(CC16_364c) ~ "No response"),
-         gun_control_stance = case_when(CC16_301a == 1 ~ "Very high importantance",
-                                        CC16_301a == 2 ~ "Somewhat high importantance",
-                                        CC16_301a == 3 ~ "Some what low importantance",
-                                        CC16_301a == 4 ~ "Very low importantance",
-                                        CC16_301a == 5 ~ "No importantance at all",
-                                        CC16_301a %in% c(8,9) | is.na(CC16_301a) ~ "No response")
-         ) %>% 
-  select(state, education, race, sex, age, preference, gun_control_stance) 
-  
+         ban_rifle_stance = case_when(CC16_330d == 1 ~ "Support",
+                                        CC16_330d == 2 ~ "Oppose",
+                                        CC16_330d %in% c(8,9) | is.na(CC16_330d) ~ "No response")
+         ) %>%
+  select(state, education, race, sex, #age,
+         preference, ban_rifle_stance); 
+
 # process ACS data
 # rescale weights by diving by the max weight for any individual in any state
-acs_cell_counts$rescaled_n <- acs_cell_counts$n/max(state_weights$max_weight)
-acs_cell_counts_slim <- acs_cell_counts %>% select(state, education, race, sex, age, 
-                                                   n
-                                                   #rescaled_n
-                                                   ) 
+# acs_cell_counts$rescaled_n <- acs_cell_counts$n/max(state_weights$max_weight)
+acs_cell_counts_slim <- acs_cell_counts %>% select(state, education, race, sex, #age,
+                                                   n);
+# acs_cell_counts_slim$age <- factor(acs_cell_counts_slim$age, levels = c(1,2,3,4,5));
+# acs_cell_counts_slim <- acs_cell_counts_slim[acs_cell_counts_slim$age != 1, ]; #remove rows with age=1
 
 # check if any people in CCES have demographic combinations not in ACS
 # will delete these
@@ -101,34 +99,38 @@ acs_combos = acs_cell_counts %>% mutate(all_vars = paste("state", state, "race",
 only_in_cces <- which(!cces_combos$all_vars %in% acs_combos$all_vars)
 cces16_slim <- cces16_slim[-only_in_cces,]
 
+#change age to numeric vector
+# cces16_slim$age <- as.numeric(cces16_slim$age);
+# acs_cell_counts_slim$age <- as.numeric(acs_cell_counts_slim$age);
+
 # create svydesign object
 # assume SRS for illustrative purposes
 cces16.des <- svydesign(ids = ~ 1, data = cces16_slim)
 cces16.des.ps <- postStratify(design = cces16.des,
-                              strata = ~state+race+education+sex+age,
+                              strata = ~state+race+education+sex,#+age,
                               population = acs_cell_counts_slim,
                               partial = TRUE)
 
-# weighted to true ACS
-true.weighted.res <- as.data.frame(svytable(~preference+race, design=cces16.des.ps)) %>% 
+#weight CCES respondents to true ACS counts. Get gun control stance based on race
+true.weighted.res <- as.data.frame(svytable(~ban_rifle_stance+race, design=cces16.des.ps)) %>% 
   mutate(race = case_when(race == 1 ~ "White",
                           race == 2 ~ "Black",
                           race == 3 ~ "Hispanic",
                           race == 4 ~ "Asian",
                           race == 5 ~ "Other")) %>% 
-  group_by(race) %>% mutate(share = Freq/sum(Freq)) %>% select(race, preference, share)
+  group_by(race) %>% mutate(share = Freq/sum(Freq)) %>% select(race, ban_rifle_stance, share)
 # true.weighted.res %>% View()
 
 # unweighted
-cces16.unweighted.des <- svydesign(ids = ~ 1, data = cces16_slim)
-unweighted.res <- as.data.frame(svytable(~preference+race, design=cces16.unweighted.des)) %>% 
-  mutate(race = case_when(race == 1 ~ "White",
-                          race == 2 ~ "Black",
-                          race == 3 ~ "Hispanic",
-                          race == 4 ~ "Asian",
-                          race == 5 ~ "Other")) %>% 
-  group_by(race) %>% mutate(share = Freq/sum(Freq)) %>% select(race, preference, share)
-# unweighted.res %>% View()
+# cces16.unweighted.des <- svydesign(ids = ~ 1, data = cces16_slim)
+# unweighted.res <- as.data.frame(svytable(~preference+race, design=cces16.unweighted.des)) %>% 
+#   mutate(race = case_when(race == 1 ~ "White",
+#                           race == 2 ~ "Black",
+#                           race == 3 ~ "Hispanic",
+#                           race == 4 ~ "Asian",
+#                           race == 5 ~ "Other")) %>% 
+#   group_by(race) %>% mutate(share = Freq/sum(Freq)) %>% select(race, preference, share)
+# # unweighted.res %>% View()
 
 # weight to noisy ACS for different values of epsilon and save results of
 # various survey questions broken out by a demographic
@@ -206,9 +208,9 @@ vote_share_difs_race <- ggplot(data=avg_results_df[avg_results_df$epsilon < 2,],
   facet_wrap(~race, nrow=1) + 
   labs(x="Epsilon", y="Difference between weighted two-party vote share\ndifference between DP and non-DP ACS release") +
   theme_bw()
-pdf("plots/vote_share_difs_race.pdf", width=10, height=5)
+# pdf("plots/vote_share_difs_race.pdf", width=10, height=5)
 vote_share_difs_race
-dev.off()
+# dev.off()
 
 # Appendix
 # compare to actual CCES weights

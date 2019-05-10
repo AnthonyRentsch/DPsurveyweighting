@@ -6,8 +6,9 @@
 # Set up
 rm(list = ls())
 require(plyr); require(dplyr)
-setwd("~/Desktop/Harvard/S19/cs208/DPsurveyweighting/data/")
-cell_counts_file_name = "cell_counts_5var.csv"
+# setwd("~/Desktop/Harvard/S19/cs208/DPsurveyweighting/data/")
+setwd("~/Desktop/Bhaven/Harvard/Classes/CS208/DPsurveyweighting/")
+cell_counts_file_name = "cell_counts_5var_newAge.csv"
 state_weights_file_name = "state_weights.csv"
 
 states <- tolower(c(state.abb, "DC"))
@@ -55,11 +56,10 @@ for(state in states) {
   state_person_data <- get_acs_data(state)
   # pre-process
   state_person_data <- state_person_data %>% 
-    mutate(age = case_when(AGEP >=0 & AGEP < 18 ~ 1,
-                            AGEP >= 18 & AGEP < 35 ~ 2,
-                            AGEP >= 35 & AGEP < 50 ~ 3,
-                            AGEP >= 50 & AGEP < 65 ~ 4,
-                            AGEP >= 65 ~ 5),
+    mutate(age = case_when(AGEP >=0 & AGEP < 35 ~ 1,
+                            AGEP >= 35 & AGEP < 50 ~ 2,
+                            AGEP >= 50 & AGEP < 65 ~ 3,
+                            AGEP >= 65 ~ 4),
            # citizen = case_when(CIT %in% c(1,2,3,4) ~ 1,
            #                 CIT == 5 ~ 2),
            # marital = case_when(MAR == 1 ~ 1,

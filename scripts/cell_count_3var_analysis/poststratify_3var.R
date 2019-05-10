@@ -53,8 +53,8 @@ cces16_slim <- cces16 %>% select(state, education, race, CC16_364c, CC16_301a);
   
 # process ACS data
 # rescale weights by dividing by the max weight for any individual in any state
-acs_cell_counts$rescaled_n <- acs_cell_counts$n/max(state_weights$max_weight)
-acs_cell_counts_slim <- acs_cell_counts %>% select(state, education, race, rescaled_n) #***
+# acs_cell_counts$rescaled_n <- acs_cell_counts$n / max(state_weights$max_weight)
+acs_cell_counts_slim <- acs_cell_counts %>% select(state, education, race, n) #***
 
 # create svydesign object
 # assume SRS for illustrative purposes
