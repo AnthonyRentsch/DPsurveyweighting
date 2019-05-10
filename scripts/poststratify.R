@@ -8,12 +8,12 @@ setwd("~/Desktop/Harvard/S19/cs208/DPsurveyweighting")
 # install.packages("survey")
 require(plyr); require(dplyr); require(ggplot2); require(readr); require(survey)
 source("scripts/dp_utils.R")
-acs_cell_counts <- read.csv("cell_counts_5var_newAge.csv")
+acs_cell_counts <- read.csv("data/cell_counts_5var_newAge.csv")
 acs_cell_counts <- acs_cell_counts[,-1]
 state_weights <- read.csv("data/state_weights.csv")
 cces16 <- read_tsv("data/CCES16_Common_OUTPUT_Jul2017_VV.tab", col_names = TRUE)
 
-# process CCES data
+# Process CCES data
 weight_vars_cces <- c("gender", # sex
                       "birthyr", # age
                       "educ", # education
@@ -67,25 +67,20 @@ cces16_slim <- cces16 %>%
                                 CC16_364c == 5 ~ "Other",
                                 CC16_364c == 6 ~ "Won't vote",
                                 CC16_364c %in% c(7,8,9) | is.na(CC16_364c) ~ "No response"),
-         gun_control_stance = case_when(CC16_301a == 1 ~ "Very high importantance",
-                                        CC16_301a == 2 ~ "Somewhat high importantance",
-                                        CC16_301a == 3 ~ "Some what low importantance",
-                                        CC16_301a == 4 ~ "Very low importantance",
-                                        CC16_301a == 5 ~ "No importantance at all",
-                                        CC16_301a %in% c(8,9) | is.na(CC16_301a) ~ "No response")
+         assault_rifle_ban = case_when(CC16_330d == 1 ~ "Support",
+                                       CC16_330d == 2 ~ "Oppose",
+                                       !CC16_330d %in% c(1,2) ~ "No response")
          ) %>% 
-  select(state, education, race, sex, age, preference, gun_control_stance) 
+  select(state, education, race, sex, age, preference, assault_rifle_ban) 
   
-# process ACS data
-# rescale weights by diving by the max weight for any individual in any state
+# Process ACS data
 # acs_cell_counts$rescaled_n <- acs_cell_counts$n/max(state_weights$max_weight)
 acs_cell_counts_slim <- acs_cell_counts %>% select(state, education, race, sex, age, 
                                                    n
                                                    #rescaled_n
                                                    ) 
 
-# check if any people in CCES have demographic combinations not in ACS
-# will delete these
+# check if any people in CCES have demographic combinations not in ACS and delete these
 # in 5 variable case, there is only 1 respondent
 cces_combos = cces16 %>% mutate(all_vars = paste("state", state, "race", race, "sex", sex,
                                                  "age", age, "education", education,
@@ -97,7 +92,8 @@ acs_combos = acs_cell_counts %>% mutate(all_vars = paste("state", state, "race",
 only_in_cces <- which(!cces_combos$all_vars %in% acs_combos$all_vars)
 cces16_slim <- cces16_slim[-only_in_cces,]
 
-# create svydesign object
+# Analysis
+
 # assume SRS for illustrative purposes
 cces16.des <- svydesign(ids = ~ 1, data = cces16_slim)
 cces16.des.ps <- postStratify(design = cces16.des,
@@ -109,36 +105,35 @@ cces16.des.ps <- postStratify(design = cces16.des,
 # bad_inds <- which(is.na(weights(cces16.des.ps)))
 # cces16_slim[bad_inds,] %>% View()
 
-# weighted to true ACS
-true.weighted.res <- as.data.frame(svytable(~preference+race, design=cces16.des.ps)) %>% 
+###
+# VOTE PREFERENCE BY RACE
+###
+# our true weights
+true.weighted.res.vs <- as.data.frame(svytable(~preference+race, design=cces16.des.ps)) %>% 
   mutate(race = case_when(race == 1 ~ "White",
                           race == 2 ~ "Black",
                           race == 3 ~ "Hispanic",
                           race == 4 ~ "Asian",
                           race == 5 ~ "Other")) %>% 
   group_by(race) %>% mutate(share = Freq/sum(Freq)) %>% select(race, preference, share)
-# true.weighted.res %>% View()
 
 # unweighted
 cces16.unweighted.des <- svydesign(ids = ~ 1, data = cces16_slim)
-unweighted.res <- as.data.frame(svytable(~preference+race, design=cces16.unweighted.des)) %>% 
+unweighted.res.vs <- as.data.frame(svytable(~preference+race, design=cces16.unweighted.des)) %>% 
   mutate(race = case_when(race == 1 ~ "White",
                           race == 2 ~ "Black",
                           race == 3 ~ "Hispanic",
                           race == 4 ~ "Asian",
                           race == 5 ~ "Other")) %>% 
   group_by(race) %>% mutate(share = Freq/sum(Freq)) %>% select(race, preference, share)
-# unweighted.res %>% View()
 
-# weight to noisy ACS for different values of epsilon and save results of
-# various survey questions broken out by a demographic
-# CURRENTLY: vote preference in 2016 and race
+# weight to noisy ACS for different values of epsilon
 epsilons <- c(0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1)
-num_iter <- 5
+num_iter <- 10
 i <- 1
 
-results <- matrix(NA, nrow=length(epsilons)*num_iter*length(unique(cces16_slim$race)), ncol=6)
-for (epsilon in epsilons[1]) {
+results.vs <- matrix(NA, nrow=length(epsilons)*num_iter*length(unique(cces16_slim$race)), ncol=6)
+for (epsilon in epsilons) {
   cat("\nEpsilon:", epsilon)
   for (iter in 1:num_iter) {
     
@@ -157,7 +152,7 @@ for (epsilon in epsilons[1]) {
                                         partial = TRUE)
     
     # compute cross-tab for vote preference by race and isolate Clinton-Trump difference
-    noisy.weighted.res <- as.data.frame(svytable(~preference+race, design=cces16.noisy.des.ps)) %>% 
+    noisy.weighted.res.vs <- as.data.frame(svytable(~preference+race, design=cces16.noisy.des.ps)) %>% 
       mutate(race = case_when(race == 1 ~ "White",
                               race == 2 ~ "Black",
                               race == 3 ~ "Hispanic",
@@ -166,48 +161,157 @@ for (epsilon in epsilons[1]) {
       group_by(race) %>% mutate(share = Freq/sum(Freq)) %>% select(race, preference, share)
     
     # compare to non-private benchmarks (true weights and unweighted) and store
-    for (race in unique(noisy.weighted.res$race)) {
-      clinton.noisy.share <- noisy.weighted.res$share[noisy.weighted.res$race==race & noisy.weighted.res$preference=="Clinton"]
-      trump.noisy.share <- noisy.weighted.res$share[noisy.weighted.res$race==race & noisy.weighted.res$preference=="Trump"]
+    for (race in unique(noisy.weighted.res.vs$race)) {
+      clinton.noisy.share <- noisy.weighted.res.vs$share[noisy.weighted.res.vs$race==race & noisy.weighted.res.vs$preference=="Clinton"]
+      trump.noisy.share <- noisy.weighted.res.vs$share[noisy.weighted.res.vs$race==race & noisy.weighted.res.vs$preference=="Trump"]
       noisy.dif <- clinton.noisy.share - trump.noisy.share
         
-      clinton.true.share <- true.weighted.res$share[true.weighted.res$race==race & true.weighted.res$preference=="Clinton"]
-      trump.true.share <- true.weighted.res$share[true.weighted.res$race==race & true.weighted.res$preference=="Trump"]
+      clinton.true.share <- true.weighted.res.vs$share[true.weighted.res.vs$race==race & true.weighted.res.vs$preference=="Clinton"]
+      trump.true.share <- true.weighted.res.vs$share[true.weighted.res.vs$race==race & true.weighted.res.vs$preference=="Trump"]
       true.dif <- clinton.true.share - trump.true.share
       
-      clinton.unweighted.share <- unweighted.res$share[unweighted.res$race==race & unweighted.res$preference=="Clinton"]
-      trump.unweighted.share <- unweighted.res$share[unweighted.res$race==race & unweighted.res$preference=="Trump"]
+      clinton.unweighted.share <- unweighted.res.vs$share[unweighted.res.vs$race==race & unweighted.res.vs$preference=="Clinton"]
+      trump.unweighted.share <- unweighted.res.vs$share[unweighted.res.vs$race==race & unweighted.res.vs$preference=="Trump"]
       unweighted.dif <- clinton.unweighted.share - trump.unweighted.share
       
-      results[i,] <- c(race, epsilon, iter, noisy.dif, true.dif, unweighted.dif)
+      results.vs[i,] <- c(race, epsilon, iter, noisy.dif, true.dif, unweighted.dif)
       i <- i + 1
     }
   }
 }
 
-results_df <- as.data.frame(results)
-names(results_df) <- c("race", "epsilon", "iteration", "two_party_dif_noisy_weight", 
+results.vs.df <- as.data.frame(results.vs)
+names(results.vs.df) <- c("race", "epsilon", "iteration", "two_party_dif_noisy_weight", 
                        "two_party_dif_true_weight", "two_party_dif_no_weight")
-results_df <- results_df %>% 
+results.vs.df <- results.vs.df %>% 
   mutate(epsilon = as.numeric(as.character(epsilon)),
          two_party_dif_noisy_weight = as.numeric(as.character(two_party_dif_noisy_weight)),
          two_party_dif_true_weight = as.numeric(as.character(two_party_dif_true_weight)),
          two_party_dif_no_weight = as.numeric(as.character(two_party_dif_no_weight)))
 
-avg_results_df <- results_df %>% group_by(epsilon, race) %>% 
+avg.results.vs.df <- results.vs.df %>% group_by(epsilon, race) %>% 
   summarise(avg_two_party_dif_noisy_weight = mean(two_party_dif_noisy_weight),
          avg_two_party_dif_true_weight = mean(two_party_dif_true_weight),
          avg_two_party_dif_no_weight = mean(two_party_dif_no_weight)) %>% 
   ungroup() %>% select(race, epsilon, avg_two_party_dif_noisy_weight,
                        avg_two_party_dif_true_weight, avg_two_party_dif_no_weight)
 
-vote_share_difs_race <- ggplot(data=avg_results_df[avg_results_df$epsilon < 2,], aes(x=epsilon)) + 
-  geom_line(aes(y=avg_two_party_dif_noisy_weight-avg_two_party_dif_true_weight)) +
+vote_share_difs_race <- ggplot(data=avg.results.vs.df, aes(x=epsilon)) + 
+  geom_line(aes(y=(avg_two_party_dif_noisy_weight-avg_two_party_dif_true_weight)*100)) +
   facet_wrap(~race, nrow=1) + 
+  coord_cartesian(ylim=c(-2,2)) + 
   labs(x="Epsilon", y="Difference between weighted two-party vote share\ndifference between DP and non-DP ACS release") +
   theme_bw()
 pdf("plots/vote_share_difs_race.pdf", width=10, height=5)
 vote_share_difs_race
+dev.off()
+
+###
+# SUPPORT FOR ASSAULT RIFLE BAN BY EDUCATION
+###
+# our true weights
+true.weighted.res.arb <- as.data.frame(svytable(~assault_rifle_ban+education, design=cces16.des.ps)) %>% 
+  mutate(education = case_when(education == 1 ~ "No HS",
+                          education == 2 ~ "HS graduate",
+                          education == 3 ~ "Some college",
+                          education == 4 ~ "2-year degree",
+                          education == 5 ~ "4-year degree",
+                          education == 6 ~ "Post-graduate degree")) %>% 
+  group_by(education) %>% mutate(share = Freq/sum(Freq)) %>% select(education, assault_rifle_ban, share)
+
+# unweighted
+unweighted.res.arb <- as.data.frame(svytable(~assault_rifle_ban+education, design=cces16.unweighted.des)) %>% 
+  mutate(education = case_when(education == 1 ~ "No HS",
+                          education == 2 ~ "HS graduate",
+                          education == 3 ~ "Some college",
+                          education == 4 ~ "2-year degree",
+                          education == 5 ~ "4-year degree",
+                          education == 6 ~ "Post-graduate degree")) %>% 
+  group_by(education) %>% mutate(share = Freq/sum(Freq)) %>% select(education, assault_rifle_ban, share)
+
+# weight to noisy ACS for different values of epsilon
+epsilons <- c(0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1)
+num_iter <- 10
+i <- 1
+
+results.arb <- matrix(NA, nrow=length(epsilons)*num_iter*length(unique(cces16_slim$education)), ncol=6)
+for (epsilon in epsilons) {
+  cat("\nEpsilon:", epsilon)
+  for (iter in 1:num_iter) {
+    
+    # set up noisy ACS counts
+    scale <- max(state_weights$max_weight)/epsilon
+    noisy_acs <- acs_cell_counts_slim
+    noisy_acs$noisy_n <- noisy_acs$n + rlap(mu=0, b=scale, size=nrow(noisy_acs))
+    noisy_acs$noisy_n <- ifelse(noisy_acs$noisy_n < 0, 1, noisy_acs$noisy_n)
+    noisy_acs_slim <- noisy_acs %>% select(-n)
+    
+    # compute post-stratification weights with this noisy population data
+    cces16.noisy.des <- svydesign(ids = ~ 1, data = cces16_slim)
+    cces16.noisy.des.ps <- postStratify(design = cces16.noisy.des,
+                                        strata = ~state+race+education+sex+age,
+                                        population = noisy_acs_slim,
+                                        partial = TRUE)
+    
+    # compute cross-tab for vote preference by race and isolate Clinton-Trump difference
+    noisy.weighted.res.arb <- as.data.frame(svytable(~assault_rifle_ban+education, design=cces16.noisy.des.ps)) %>% 
+      mutate(education = case_when(education == 1 ~ "No HS",
+                              education == 2 ~ "HS graduate",
+                              education == 3 ~ "Some college",
+                              education == 4 ~ "2-year degree",
+                              education == 5 ~ "4-year degree",
+                              education == 6 ~ "Post-graduate degree")) %>% 
+      group_by(education) %>% mutate(share = Freq/sum(Freq)) %>% select(education, assault_rifle_ban, share)
+    
+    # compare to non-private benchmarks (true weights and unweighted) and store
+    for (education in unique(noisy.weighted.res.arb$education)) {
+      support.noisy.share <- noisy.weighted.res.arb$share[noisy.weighted.res.arb$education==education & noisy.weighted.res.arb$assault_rifle_ban=="Support"]
+      oppose.noisy.share <- noisy.weighted.res.arb$share[noisy.weighted.res.arb$education==education & noisy.weighted.res.arb$assault_rifle_ban=="Oppose"]
+      noisy.dif <- support.noisy.share - oppose.noisy.share
+      
+      support.true.share <- true.weighted.res.arb$share[true.weighted.res.arb$education==education & true.weighted.res.arb$assault_rifle_ban=="Support"]
+      oppose.true.share <- true.weighted.res.arb$share[true.weighted.res.arb$education==education & true.weighted.res.arb$assault_rifle_ban=="Oppose"]
+      true.dif <- support.true.share - oppose.true.share
+      
+      support.unweighted.share <- unweighted.res.arb$share[unweighted.res.arb$education==education & unweighted.res.arb$assault_rifle_ban=="Support"]
+      oppose.unweighted.share <- unweighted.res.arb$share[unweighted.res.arb$education==education & unweighted.res.arb$assault_rifle_ban=="Oppose"]
+      unweighted.dif <- support.unweighted.share - oppose.unweighted.share
+      
+      results.arb[i,] <- c(education, epsilon, iter, noisy.dif, true.dif, unweighted.dif)
+      i <- i + 1
+    }
+  }
+}
+
+results.arb.df <- as.data.frame(results.arb)
+names(results.arb.df) <- c("education", "epsilon", "iteration", "two_party_dif_noisy_weight", 
+                          "two_party_dif_true_weight", "two_party_dif_no_weight")
+results.arb.df <- results.arb.df %>% 
+  mutate(epsilon = as.numeric(as.character(epsilon)),
+         two_party_dif_noisy_weight = as.numeric(as.character(two_party_dif_noisy_weight)),
+         two_party_dif_true_weight = as.numeric(as.character(two_party_dif_true_weight)),
+         two_party_dif_no_weight = as.numeric(as.character(two_party_dif_no_weight)))
+
+avg.results.arb.df <- results.arb.df %>% group_by(epsilon, education) %>% 
+  summarise(avg_two_party_dif_noisy_weight = mean(two_party_dif_noisy_weight),
+            avg_two_party_dif_true_weight = mean(two_party_dif_true_weight),
+            avg_two_party_dif_no_weight = mean(two_party_dif_no_weight)) %>% 
+  ungroup() %>% select(education, epsilon, avg_two_party_dif_noisy_weight,
+                       avg_two_party_dif_true_weight, avg_two_party_dif_no_weight)
+
+avg.results.arb.df$education <- factor(avg.results.arb.df$education, 
+                                       levels = c("No HS","HS graduate","Some college",
+                                                  "2-year degree","4-year degree",
+                                                  "Post-graduate degree"))
+
+assault_rifle_ban_difs_education <- ggplot(data=avg.results.arb.df, aes(x=epsilon)) + 
+  geom_line(aes(y=(avg_two_party_dif_noisy_weight-avg_two_party_dif_true_weight)*100)) +
+  facet_wrap(~education, nrow=1) + 
+  coord_cartesian(ylim=c(-2,2)) + 
+  labs(x="Epsilon", y="Difference between weighted net support for assault\nrifle ban between DP and non-DP ACS release\n(% points)") +
+  theme_bw()
+pdf("plots/assault_rifle_ban_difs_education.pdf", width=10, height=5)
+assault_rifle_ban_difs_education
 dev.off()
 
 # Appendix
