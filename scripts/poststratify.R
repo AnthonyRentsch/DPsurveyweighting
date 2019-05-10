@@ -4,12 +4,11 @@
 
 # Set up
 rm(list = ls())
-# setwd("~/Desktop/Harvard/S19/cs208/DPsurveyweighting")
-setwd("~/Desktop/Bhaven/Harvard/Classes/CS208/DPsurveyweighting/");
+setwd("~/Desktop/Harvard/S19/cs208/DPsurveyweighting")
 # install.packages("survey")
 require(plyr); require(dplyr); require(ggplot2); require(readr); require(survey)
 source("scripts/dp_utils.R")
-acs_cell_counts <- read.csv("data/cell_counts_5var.csv")
+acs_cell_counts <- read.csv("cell_counts_5var_newAge.csv")
 acs_cell_counts <- acs_cell_counts[,-1]
 state_weights <- read.csv("data/state_weights.csv")
 cces16 <- read_tsv("data/CCES16_Common_OUTPUT_Jul2017_VV.tab", col_names = TRUE)
@@ -41,11 +40,10 @@ cces16 <- cces16 %>%
                           race == 4 ~ 4,
                           race %in% c(5,6,7,8,98,99,NA) ~ 5),
          sex = gender,
-         age = case_when(2016-birthyr < 18 | is.na(birthyr) ~ 1,
-                         2016-birthyr >= 18 & 2016-birthyr < 35 ~ 2,
-                         2016-birthyr >= 35 & 2016-birthyr < 50 ~ 3,
-                         2016-birthyr >= 50 & 2016-birthyr < 65 ~ 4,
-                         2016-birthyr >= 65 ~ 5)
+         age = case_when(2016-birthyr < 35 | is.na(birthyr) ~ 1,
+                         2016-birthyr >= 35 & 2016-birthyr < 50 ~ 2,
+                         2016-birthyr >= 50 & 2016-birthyr < 65 ~ 3,
+                         2016-birthyr >= 65 ~ 4)
          # employment = case_when(employ %in% c(1,2) ~ 1,
          #                        employ %in% c(3,4,5,6,7,8,9) | is.na(employ) ~ 2),
          # marital = case_when(marstat == 1 ~ 1,
@@ -80,7 +78,7 @@ cces16_slim <- cces16 %>%
   
 # process ACS data
 # rescale weights by diving by the max weight for any individual in any state
-acs_cell_counts$rescaled_n <- acs_cell_counts$n/max(state_weights$max_weight)
+# acs_cell_counts$rescaled_n <- acs_cell_counts$n/max(state_weights$max_weight)
 acs_cell_counts_slim <- acs_cell_counts %>% select(state, education, race, sex, age, 
                                                    n
                                                    #rescaled_n
@@ -91,12 +89,10 @@ acs_cell_counts_slim <- acs_cell_counts %>% select(state, education, race, sex, 
 # in 5 variable case, there is only 1 respondent
 cces_combos = cces16 %>% mutate(all_vars = paste("state", state, "race", race, "sex", sex,
                                                  "age", age, "education", education,
-                                                 sep="_")) %>% 
-  select(all_vars)
+                                                 sep="_")) %>% select(all_vars)
 acs_combos = acs_cell_counts %>% mutate(all_vars = paste("state", state, "race", race, "sex", sex,
                                                  "age", age, "education", education,
-                                                 sep="_")) %>% 
-  select(all_vars)
+                                                 sep="_")) %>% select(all_vars)
 
 only_in_cces <- which(!cces_combos$all_vars %in% acs_combos$all_vars)
 cces16_slim <- cces16_slim[-only_in_cces,]
@@ -108,6 +104,10 @@ cces16.des.ps <- postStratify(design = cces16.des,
                               strata = ~state+race+education+sex+age,
                               population = acs_cell_counts_slim,
                               partial = TRUE)
+
+# we are getting NA weights but are unsure why
+# bad_inds <- which(is.na(weights(cces16.des.ps)))
+# cces16_slim[bad_inds,] %>% View()
 
 # weighted to true ACS
 true.weighted.res <- as.data.frame(svytable(~preference+race, design=cces16.des.ps)) %>% 
@@ -133,21 +133,21 @@ unweighted.res <- as.data.frame(svytable(~preference+race, design=cces16.unweigh
 # weight to noisy ACS for different values of epsilon and save results of
 # various survey questions broken out by a demographic
 # CURRENTLY: vote preference in 2016 and race
-epsilons <- c(0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1,2,3,4)
+epsilons <- c(0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1)
 num_iter <- 5
 i <- 1
 
 results <- matrix(NA, nrow=length(epsilons)*num_iter*length(unique(cces16_slim$race)), ncol=6)
-for (epsilon in epsilons) {
+for (epsilon in epsilons[1]) {
   cat("\nEpsilon:", epsilon)
   for (iter in 1:num_iter) {
     
     # set up noisy ACS counts
-    scale <- 2/epsilon
+    scale <- max(state_weights$max_weight)/epsilon
     noisy_acs <- acs_cell_counts_slim
-    noisy_acs$noisy_n <- noisy_acs$rescaled_n + rlap(mu=0, b=scale, size=nrow(noisy_acs))
+    noisy_acs$noisy_n <- noisy_acs$n + rlap(mu=0, b=scale, size=nrow(noisy_acs))
     noisy_acs$noisy_n <- ifelse(noisy_acs$noisy_n < 0, 1, noisy_acs$noisy_n)
-    noisy_acs_slim <- noisy_acs %>% select(-rescaled_n)
+    noisy_acs_slim <- noisy_acs %>% select(-n)
     
     # compute post-stratification weights with this noisy population data
     cces16.noisy.des <- svydesign(ids = ~ 1, data = cces16_slim)
