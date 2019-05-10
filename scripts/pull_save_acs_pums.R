@@ -16,7 +16,7 @@ person_vars <- c("ST", #state code
                  "AGEP", #age
                  "CIT", #citizenship
                  "MAR", #marital status
-                 "SCHL", #education
+                 "SCHL", #educational attainment
                  "SEX", #sex/gender
                  "ESR", #employment status
                  "RAC1P", #race/ethnicity
