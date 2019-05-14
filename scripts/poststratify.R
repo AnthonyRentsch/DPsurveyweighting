@@ -44,12 +44,6 @@ cces16 <- cces16 %>%
                          2016-birthyr >= 35 & 2016-birthyr < 50 ~ 2,
                          2016-birthyr >= 50 & 2016-birthyr < 65 ~ 3,
                          2016-birthyr >= 65 ~ 4)
-         # employment = case_when(employ %in% c(1,2) ~ 1,
-         #                        employ %in% c(3,4,5,6,7,8,9) | is.na(employ) ~ 2),
-         # marital = case_when(marstat == 1 ~ 1,
-         #                     marstat != 1 ~ 2),
-         # citizen = case_when(immstat != 2 | is.na(immstat) ~ 1,
-         #                     immstat == 2 ~ 2)
          )
 states <- data.frame(inputstate = seq(1:56), 
                      state = tolower(c("AL","AK","","AZ","AR","CA","","CO","CT","DE","DC",
@@ -78,17 +72,6 @@ cces16_slim <- cces16 %>%
 acs_cell_counts$n <- ifelse(acs_cell_counts$n < 1, 1, acs_cell_counts$n)
 acs_cell_counts_slim <- acs_cell_counts %>% select(state, education, race, sex, age, n)
 
-# check if any people in CCES have demographic combinations not in ACS and delete these
-# cces_combos = cces16 %>% mutate(all_vars = paste("state", state, "race", race, "sex", sex,
-#                                                  "age", age, "education", education,
-#                                                  sep="_")) %>% select(all_vars)
-# acs_combos = acs_cell_counts %>% mutate(all_vars = paste("state", state, "race", race, "sex", sex,
-#                                                  "age", age, "education", education,
-#                                                  sep="_")) %>% select(all_vars)
-# 
-# only_in_cces <- which(!cces_combos$all_vars %in% acs_combos$all_vars)
-# cces16_slim <- cces16_slim[-only_in_cces,]
-
 # Analysis
 
 # assume SRS for illustrative purposes
@@ -99,8 +82,8 @@ cces16.des.ps <- postStratify(design = cces16.des,
                               partial = TRUE)
 
 # we are getting NA weights but are unsure why
-# bad_inds <- which(is.na(weights(cces16.des.ps)))
-# cces16_slim[bad_inds,] %>% View()
+bad_inds <- which(is.na(weights(cces16.des.ps)))
+cces16_slim[bad_inds,] %>% View()
 
 ###
 # VOTE PREFERENCE BY RACE
@@ -200,7 +183,6 @@ vote_share_difs_race <- ggplot(data=avg.results.vs.df,
   facet_wrap(~race, nrow=1) + 
   coord_cartesian(ylim=c(-2,2)) + 
   labs(x="Epsilon", 
-       #y="Difference between weighted two-party vote share\ndifference between DP and non-DP ACS release\n(% points)"
        y=expression(paste("(Clinton lead)"["noisy"], " - ", "(Clinton lead)"["true"], sep=""))) +
   theme_bw()
 pdf("plots/vote_share_difs_race.pdf", width=10, height=5)
