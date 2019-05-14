@@ -4,7 +4,8 @@
 
 # Set up
 rm(list = ls())
-setwd("~/Desktop/Harvard/S19/cs208/DPsurveyweighting")
+# setwd("~/Desktop/Harvard/S19/cs208/DPsurveyweighting")
+setwd("~/Desktop/Bhaven/Harvard/Classes/CS208/DPsurveyweighting/");
 # install.packages("survey")
 require(plyr); require(dplyr); require(ggplot2); require(readr); require(survey)
 source("scripts/dp_utils.R")
@@ -99,5 +100,7 @@ cces16.des.ps <- postStratify(design = cces16.des,
                               partial = TRUE)
 
 # we are getting NA weights but are unsure why
-# bad_inds <- which(is.na(weights(cces16.des.ps)))
-# cces16_slim[bad_inds,] %>% View()
+bad_inds <- which(is.na(weights(cces16.des.ps)))
+ccess_NA_rows <- cces16_slim[bad_inds,];
+
+ccess_NA_groups <- ccess_NA_rows %>% group_by(state, education, race, sex, age) %>% count() #select(state, education, race, sex, age)
