@@ -8,7 +8,7 @@ setwd("~/Desktop/Harvard/S19/cs208/DPsurveyweighting")
 # install.packages("survey")
 require(plyr); require(dplyr); require(ggplot2); require(readr); require(survey)
 source("scripts/dp_utils.R")
-acs_cell_counts <- read.csv("data/cell_counts_5var_newAge.csv")
+acs_cell_counts <- read.csv("data/acs_cell_counts_clean.csv")
 acs_cell_counts <- acs_cell_counts[,-1]
 state_weights <- read.csv("data/state_weights.csv")
 cces16 <- read_tsv("data/CCES16_Common_OUTPUT_Jul2017_VV.tab", col_names = TRUE)
@@ -81,16 +81,15 @@ acs_cell_counts_slim <- acs_cell_counts %>% select(state, education, race, sex, 
                                                    ) 
 
 # check if any people in CCES have demographic combinations not in ACS and delete these
-# in 5 variable case, there is only 1 respondent
-cces_combos = cces16 %>% mutate(all_vars = paste("state", state, "race", race, "sex", sex,
-                                                 "age", age, "education", education,
-                                                 sep="_")) %>% select(all_vars)
-acs_combos = acs_cell_counts %>% mutate(all_vars = paste("state", state, "race", race, "sex", sex,
-                                                 "age", age, "education", education,
-                                                 sep="_")) %>% select(all_vars)
-
-only_in_cces <- which(!cces_combos$all_vars %in% acs_combos$all_vars)
-cces16_slim <- cces16_slim[-only_in_cces,]
+# cces_combos = cces16 %>% mutate(all_vars = paste("state", state, "race", race, "sex", sex,
+#                                                  "age", age, "education", education,
+#                                                  sep="_")) %>% select(all_vars)
+# acs_combos = acs_cell_counts %>% mutate(all_vars = paste("state", state, "race", race, "sex", sex,
+#                                                  "age", age, "education", education,
+#                                                  sep="_")) %>% select(all_vars)
+# 
+# only_in_cces <- which(!cces_combos$all_vars %in% acs_combos$all_vars)
+# cces16_slim <- cces16_slim[-only_in_cces,]
 
 # Analysis
 

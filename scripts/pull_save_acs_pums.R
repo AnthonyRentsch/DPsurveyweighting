@@ -6,25 +6,24 @@
 # Set up
 rm(list = ls())
 require(plyr); require(dplyr)
-# setwd("~/Desktop/Harvard/S19/cs208/DPsurveyweighting/data/")
-setwd("~/Desktop/Bhaven/Harvard/Classes/CS208/DPsurveyweighting/");
+setwd("~/Desktop/Harvard/S19/cs208/DPsurveyweighting/")
+# setwd("~/Desktop/Bhaven/Harvard/Classes/CS208/DPsurveyweighting/");
 # cell_counts_file_name = "cell_counts_5var_newAge.csv"
 # state_weights_file_name = "state_weights.csv"
 
 states <- tolower(c(state.abb, "DC"))
 person_vars <- c("ST", #state code
                  "AGEP", #age
-                 "CIT", #citizenship
-                 "MAR", #marital status
+                 #"CIT", #citizenship
+                 #"MAR", #marital status
                  "SCHL", #educational attainment
                  "SEX", #sex/gender
-                 "ESR", #employment status
+                 #"ESR", #employment status
                  "RAC1P", #race/ethnicity
                  "HISP", #need Hispanic category
                  #"PAOC",
-                 "PINCP", #person's income
+                 #"PINCP", #person's income
                  "PWGTP" #person's weight
-                 
                  )
 
 get_acs_data <- function(state, base_url="https://www2.census.gov/programs-surveys/acs/data/pums/2012/5-Year/csv_p", base_file="ss12p"){
@@ -44,7 +43,7 @@ cat(start_time);
 for(state in states) { #go through different states
   cat("State:", state)
   # grab ACS data for a state
-  state_person_data <- get_acs_data(state)
+  state_person_data <- get_acs_data(state);
   # pre-process
   state_person_data <- state_person_data %>% select(person_vars);
   #write data to CSV file
