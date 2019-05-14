@@ -197,11 +197,14 @@ avg.results.vs.df <- results.vs.df %>% group_by(epsilon, race) %>%
   ungroup() %>% select(race, epsilon, avg_two_party_dif_noisy_weight,
                        avg_two_party_dif_true_weight, avg_two_party_dif_no_weight)
 
-vote_share_difs_race <- ggplot(data=avg.results.vs.df, aes(x=epsilon)) + 
+vote_share_difs_race <- ggplot(data=avg.results.vs.df, 
+                               aes(x=epsilon)) + 
   geom_line(aes(y=(avg_two_party_dif_noisy_weight-avg_two_party_dif_true_weight)*100)) +
   facet_wrap(~race, nrow=1) + 
   coord_cartesian(ylim=c(-2,2)) + 
-  labs(x="Epsilon", y="Difference between weighted two-party vote share\ndifference between DP and non-DP ACS release\n(% points)") +
+  labs(x="Epsilon", 
+       #y="Difference between weighted two-party vote share\ndifference between DP and non-DP ACS release\n(% points)"
+       y=expression(paste("(Clinton lead)"["noisy"], " - ", "(Clinton lead)"["true"], sep=""))) +
   theme_bw()
 pdf("plots/vote_share_difs_race.pdf", width=10, height=5)
 vote_share_difs_race
