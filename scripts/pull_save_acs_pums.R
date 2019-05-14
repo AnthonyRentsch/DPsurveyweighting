@@ -20,9 +20,11 @@ person_vars <- c("ST", #state code
                  "SEX", #sex/gender
                  "ESR", #employment status
                  "RAC1P", #race/ethnicity
+                 "HISP", #need Hispanic category
                  #"PAOC",
                  "PINCP", #person's income
                  "PWGTP" #person's weight
+                 
                  )
 
 get_acs_data <- function(state, base_url="https://www2.census.gov/programs-surveys/acs/data/pums/2012/5-Year/csv_p", base_file="ss12p"){
@@ -46,7 +48,7 @@ for(state in states) { #go through different states
   # pre-process
   state_person_data <- state_person_data %>% select(person_vars);
   #write data to CSV file
-  file_name <- paste("data/state_pums/", state, "_pums.csv");
+  file_name <- paste("data/state_pums/", state, "_pums.csv", sep="");
   write.csv(state_person_data, file = file_name, row.names=FALSE);
 
 }
