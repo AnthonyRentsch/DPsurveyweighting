@@ -75,10 +75,8 @@ cces16_slim <- cces16 %>%
   
 # Process ACS data
 # acs_cell_counts$rescaled_n <- acs_cell_counts$n/max(state_weights$max_weight)
-acs_cell_counts_slim <- acs_cell_counts %>% select(state, education, race, sex, age, 
-                                                   n
-                                                   #rescaled_n
-                                                   ) 
+acs_cell_counts$n <- ifelse(acs_cell_counts$n < 1, 1, acs_cell_counts$n)
+acs_cell_counts_slim <- acs_cell_counts %>% select(state, education, race, sex, age, n)
 
 # check if any people in CCES have demographic combinations not in ACS and delete these
 # cces_combos = cces16 %>% mutate(all_vars = paste("state", state, "race", race, "sex", sex,
