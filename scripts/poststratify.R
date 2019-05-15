@@ -109,8 +109,9 @@ unweighted.race.vs <- as.data.frame(svytable(~preference+race, design=cces16.unw
   group_by(race) %>% mutate(share = Freq/sum(Freq)) %>% select(race, preference, share)
 
 # weight to noisy ACS for different values of epsilon
+set.seed(208)
 epsilons <- c(0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1)
-num_iter <- 10
+num_iter <- 30
 i <- 1
 
 results.race.vs <- matrix(NA, nrow=length(epsilons)*num_iter*length(unique(cces16_slim$race)), ncol=6)
