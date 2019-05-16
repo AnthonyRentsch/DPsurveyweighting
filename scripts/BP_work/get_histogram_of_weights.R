@@ -4,8 +4,8 @@
 
 rm(list = ls())
 require(plyr); require(dplyr)
-# setwd("~/Desktop/Harvard/S19/cs208/DPsurveyweighting/data")
-setwd("~/Desktop/Bhaven/Harvard/Classes/CS208/DPsurveyweighting/data/")
+setwd("~/Desktop/Harvard/S19/cs208/DPsurveyweighting/data")
+# setwd("~/Desktop/Bhaven/Harvard/Classes/CS208/DPsurveyweighting/data/")
 
 # file_out <- "acs_cell_counts_clean.csv"
 
@@ -40,7 +40,7 @@ require(ggplot2);
 p <- ggplot(data = person_weights_df, aes(x=person_weights)) + geom_histogram(bins = 100) +
   scale_x_discrete(name ="Person weights", 
                    limits=c(0,100, 200, 300, 400, 500)) + 
-  labs(y="Count") +
+  labs(x="Person weight", y="Count") +
   theme_bw() 
 
 pdf("../plots/person_weights_histogram.pdf", width=10, height=5);
