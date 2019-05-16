@@ -68,7 +68,6 @@ cces16_slim <- cces16 %>%
   select(state, education, race, sex, age, preference, assault_rifle_ban) 
   
 # Process ACS data
-# acs_cell_counts$rescaled_n <- acs_cell_counts$n/max(state_weights$max_weight)
 acs_cell_counts$n <- ifelse(acs_cell_counts$n < 1, 1, acs_cell_counts$n)
 acs_cell_counts_slim <- acs_cell_counts %>% select(state, education, race, sex, age, n)
 
@@ -120,7 +119,7 @@ for (epsilon in epsilons) {
   for (iter in 1:num_iter) {
     
     # set up noisy ACS counts
-    scale <- 2*max(state_weights$max_weight)/epsilon
+    scale <- 2*max(state_weights$max_weight)/epsilon # THIS NEEDS TO BE CHANGED
     noisy_acs <- acs_cell_counts_slim
     noisy_acs$noisy_n <- noisy_acs$n + rlap(mu=0, b=scale, size=nrow(noisy_acs))
     noisy_acs$noisy_n <- ifelse(noisy_acs$noisy_n < 0, 1, noisy_acs$noisy_n)
@@ -175,9 +174,10 @@ results.race.vs.df <- results.race.vs.df %>%
 avg.results.race.vs.df <- results.race.vs.df %>% group_by(epsilon, race) %>% 
   summarise(avg_two_party_dif_noisy_weight = mean(two_party_dif_noisy_weight),
          avg_two_party_dif_true_weight = mean(two_party_dif_true_weight),
-         avg_two_party_dif_no_weight = mean(two_party_dif_no_weight)) %>% 
+         avg_two_party_dif_no_weight = mean(two_party_dif_no_weight),
+         rmse = rmse(two_party_dif_noisy_weight*100, two_party_dif_true_weight*100)) %>% 
   ungroup() %>% select(race, epsilon, avg_two_party_dif_noisy_weight,
-                       avg_two_party_dif_true_weight, avg_two_party_dif_no_weight)
+                       avg_two_party_dif_true_weight, avg_two_party_dif_no_weight, rmse)
 
 avg.results.race.vs.df$race <- factor(avg.results.race.vs.df$race, 
                                       levels=c("White","Black","Hispanic","Asian","Other"))
@@ -185,12 +185,23 @@ avg.results.race.vs.df$race <- factor(avg.results.race.vs.df$race,
 vote_share_difs_race <- ggplot(data=avg.results.race.vs.df, aes(x=epsilon)) + 
   geom_line(aes(y=(avg_two_party_dif_noisy_weight-avg_two_party_dif_true_weight)*100)) +
   facet_wrap(~race, nrow=1) + 
-  coord_cartesian(ylim=c(-2,2)) + 
+  coord_cartesian(ylim=c(-4,4)) + 
   labs(x="Epsilon", 
-       y=expression(paste("(Clinton lead)"["noisy"], " - ", "(Clinton lead)"["true"], sep=""))) +
+       y=expression(paste("Average (Clinton lead)"["noisy"], " - ", "(Clinton lead)"["true"], sep=""))) +
   theme_bw()
 pdf("plots/vote_share_difs_race.pdf", width=10, height=5)
 vote_share_difs_race
+dev.off()
+
+vote_share_rmse_race <- ggplot(data=avg.results.race.vs.df, aes(x=epsilon)) + 
+  geom_line(aes(y=rmse)) +
+  facet_wrap(~race, nrow=1) + 
+  coord_cartesian(ylim=c(0,10)) + 
+  labs(x="Epsilon", 
+       y=expression(paste("RMSE[(Clinton lead)"["noisy"], ", ", "(Clinton lead)"["true"], "]", sep=""))) +
+  theme_bw()
+pdf("plots/vote_share_rmse_race.pdf", width=10, height=5)
+vote_share_rmse_race
 dev.off()
 
 ##########
@@ -282,9 +293,10 @@ results.educ.vs.df <- results.educ.vs.df %>%
 avg.results.educ.vs.df <- results.educ.vs.df %>% group_by(epsilon, education) %>% 
   summarise(avg_two_party_dif_noisy_weight = mean(two_party_dif_noisy_weight),
             avg_two_party_dif_true_weight = mean(two_party_dif_true_weight),
-            avg_two_party_dif_no_weight = mean(two_party_dif_no_weight)) %>% 
+            avg_two_party_dif_no_weight = mean(two_party_dif_no_weight),
+            rmse = rmse(two_party_dif_noisy_weight*100, two_party_dif_true_weight*100)) %>% 
   ungroup() %>% select(education, epsilon, avg_two_party_dif_noisy_weight,
-                       avg_two_party_dif_true_weight, avg_two_party_dif_no_weight)
+                       avg_two_party_dif_true_weight, avg_two_party_dif_no_weight, rmse)
 
 avg.results.educ.vs.df$education <- factor(avg.results.educ.vs.df$education, 
                                            levels = c("No HS","HS graduate","Some college",
@@ -294,12 +306,23 @@ avg.results.educ.vs.df$education <- factor(avg.results.educ.vs.df$education,
 vote_share_difs_education <- ggplot(data=avg.results.educ.vs.df, aes(x=epsilon)) + 
   geom_line(aes(y=(avg_two_party_dif_noisy_weight-avg_two_party_dif_true_weight)*100)) +
   facet_wrap(~education, nrow=1) + 
-  coord_cartesian(ylim=c(-2,2)) + 
+  coord_cartesian(ylim=c(-4,4)) + 
   labs(x="Epsilon", 
-       y=expression(paste("(Clinton lead)"["noisy"], " - ", "(Clinton lead)"["true"], sep=""))) +
+       y=expression(paste("Average (Clinton lead)"["noisy"], " - ", "(Clinton lead)"["true"], sep=""))) +
   theme_bw()
 pdf("plots/vote_share_difs_education.pdf", width=10, height=5)
 vote_share_difs_education
+dev.off()
+
+vote_share_rmse_education <- ggplot(data=avg.results.educ.vs.df, aes(x=epsilon)) + 
+  geom_line(aes(y=rmse)) +
+  facet_wrap(~education, nrow=1) + 
+  coord_cartesian(ylim=c(0,10)) + 
+  labs(x="Epsilon", 
+       y=expression(paste("RMSE[(Clinton lead)"["noisy"], ", ", "(Clinton lead)"["true"], "]", sep=""))) +
+  theme_bw()
+pdf("plots/vote_share_rmse_education.pdf", width=10, height=5)
+vote_share_rmse_education
 dev.off()
 
 ###
@@ -375,33 +398,45 @@ for (epsilon in epsilons) {
 }
 
 results.race.arb.df <- as.data.frame(results.race.arb)
-names(results.race.arb.df) <- c("race", "epsilon", "iteration", "two_party_dif_noisy_weight", 
-                           "two_party_dif_true_weight", "two_party_dif_no_weight")
+names(results.race.arb.df) <- c("race", "epsilon", "iteration", "net_support_noisy_weight", 
+                           "net_support_true_weight", "net_support_no_weight")
 results.race.arb.df <- results.race.arb.df %>% 
   mutate(epsilon = as.numeric(as.character(epsilon)),
-         two_party_dif_noisy_weight = as.numeric(as.character(two_party_dif_noisy_weight)),
-         two_party_dif_true_weight = as.numeric(as.character(two_party_dif_true_weight)),
-         two_party_dif_no_weight = as.numeric(as.character(two_party_dif_no_weight)))
+         net_support_noisy_weight = as.numeric(as.character(net_support_noisy_weight)),
+         net_support_true_weight = as.numeric(as.character(net_support_true_weight)),
+         net_support_no_weight = as.numeric(as.character(net_support_no_weight)))
 
 avg.results.race.arb.df <- results.race.arb.df %>% group_by(epsilon, race) %>% 
-  summarise(avg_two_party_dif_noisy_weight = mean(two_party_dif_noisy_weight),
-            avg_two_party_dif_true_weight = mean(two_party_dif_true_weight),
-            avg_two_party_dif_no_weight = mean(two_party_dif_no_weight)) %>% 
-  ungroup() %>% select(race, epsilon, avg_two_party_dif_noisy_weight,
-                       avg_two_party_dif_true_weight, avg_two_party_dif_no_weight)
+  summarise(avg_net_support_noisy_weight = mean(net_support_noisy_weight),
+            avg_net_support_true_weight = mean(net_support_true_weight),
+            avg_net_support_no_weight = mean(net_support_no_weight),
+            rmse = rmse(net_support_noisy_weight*100, net_support_true_weight*100)) %>% 
+  ungroup() %>% select(race, epsilon, avg_net_support_noisy_weight,
+                       avg_net_support_true_weight, avg_net_support_no_weight, rmse)
 
 avg.results.race.arb.df$race <- factor(avg.results.race.arb.df$race, 
                                        levels=c("White","Black","Hispanic","Asian","Other"))
 
 assault_rifle_ban_difs_race <- ggplot(data=avg.results.race.arb.df, aes(x=epsilon)) + 
-  geom_line(aes(y=(avg_two_party_dif_noisy_weight-avg_two_party_dif_true_weight)*100)) +
+  geom_line(aes(y=(avg_net_support_noisy_weight-avg_net_support_true_weight)*100)) +
   facet_wrap(~race, nrow=1) + 
-  coord_cartesian(ylim=c(-2,2)) + 
+  coord_cartesian(ylim=c(-4,4)) + 
   labs(x="Epsilon", 
-       y=expression(paste("(Net support)"["noisy"], " - ", "(Net support)"["true"], sep=""))) +
+       y=expression(paste("Average (Net support)"["noisy"], " - ", "(Net support)"["true"], sep=""))) +
   theme_bw()
 pdf("plots/assault_rifle_ban_difs_race.pdf", width=10, height=5)
 assault_rifle_ban_difs_race
+dev.off()
+
+assault_rifle_ban_rmse_race <- ggplot(data=avg.results.race.arb.df, aes(x=epsilon)) + 
+  geom_line(aes(y=rmse)) +
+  facet_wrap(~race, nrow=1) + 
+  coord_cartesian(ylim=c(0,10)) + 
+  labs(x="Epsilon", 
+       y=expression(paste("RMSE[(Net support)"["noisy"], ", ", "(Net support)"["true"], "]", sep=""))) +
+  theme_bw()
+pdf("plots/assault_rifle_ban_rmse_race.pdf", width=10, height=5)
+assault_rifle_ban_rmse_race
 dev.off()
 
 ###
@@ -481,20 +516,21 @@ for (epsilon in epsilons) {
 }
 
 results.educ.arb.df <- as.data.frame(results.educ.arb)
-names(results.educ.arb.df) <- c("education", "epsilon", "iteration", "two_party_dif_noisy_weight", 
-                          "two_party_dif_true_weight", "two_party_dif_no_weight")
+names(results.educ.arb.df) <- c("education", "epsilon", "iteration", "net_support_noisy_weight", 
+                                "net_support_true_weight", "net_support_no_weight")
 results.educ.arb.df <- results.educ.arb.df %>% 
   mutate(epsilon = as.numeric(as.character(epsilon)),
-         two_party_dif_noisy_weight = as.numeric(as.character(two_party_dif_noisy_weight)),
-         two_party_dif_true_weight = as.numeric(as.character(two_party_dif_true_weight)),
-         two_party_dif_no_weight = as.numeric(as.character(two_party_dif_no_weight)))
+         net_support_noisy_weight = as.numeric(as.character(net_support_noisy_weight)),
+         net_support_true_weight = as.numeric(as.character(net_support_true_weight)),
+         net_support_no_weight = as.numeric(as.character(net_support_no_weight)))
 
 avg.results.educ.arb.df <- results.educ.arb.df %>% group_by(epsilon, education) %>% 
-  summarise(avg_two_party_dif_noisy_weight = mean(two_party_dif_noisy_weight),
-            avg_two_party_dif_true_weight = mean(two_party_dif_true_weight),
-            avg_two_party_dif_no_weight = mean(two_party_dif_no_weight)) %>% 
-  ungroup() %>% select(education, epsilon, avg_two_party_dif_noisy_weight,
-                       avg_two_party_dif_true_weight, avg_two_party_dif_no_weight)
+  summarise(avg_net_support_noisy_weight = mean(net_support_noisy_weight),
+            avg_net_support_true_weight = mean(net_support_true_weight),
+            avg_net_support_no_weight = mean(net_support_no_weight),
+            rmse = rmse(net_support_noisy_weight*100, net_support_true_weight*100)) %>% 
+  ungroup() %>% select(education, epsilon, avg_net_support_noisy_weight,
+                       avg_net_support_true_weight, avg_net_support_no_weight, rmse)
 
 avg.results.educ.arb.df$education <- factor(avg.results.educ.arb.df$education, 
                                        levels = c("No HS","HS graduate","Some college",
@@ -502,45 +538,24 @@ avg.results.educ.arb.df$education <- factor(avg.results.educ.arb.df$education,
                                                   "Post-graduate degree"))
 
 assault_rifle_ban_difs_education <- ggplot(data=avg.results.educ.arb.df, aes(x=epsilon)) + 
-  geom_line(aes(y=(avg_two_party_dif_noisy_weight-avg_two_party_dif_true_weight)*100)) +
+  geom_line(aes(y=(avg_net_support_noisy_weight-avg_net_support_true_weight)*100)) +
   facet_wrap(~education, nrow=1) + 
-  coord_cartesian(ylim=c(-2,2)) + 
+  coord_cartesian(ylim=c(-4,4)) + 
   labs(x="Epsilon", 
-       y=expression(paste("(Net support)"["noisy"], " - ", "(Net support)"["true"], sep=""))) +
+       y=expression(paste("Average (Net support)"["noisy"], " - ", "(Net support)"["true"], sep=""))) +
   theme_bw()
 pdf("plots/assault_rifle_ban_difs_education.pdf", width=10, height=5)
 assault_rifle_ban_difs_education
 dev.off()
 
-# Appendix
-# compare our "true" weights to actual CCES weights
+assault_rifle_ban_rmse_education <- ggplot(data=avg.results.educ.arb.df, aes(x=epsilon)) + 
+  geom_line(aes(y=rmse)) +
+  facet_wrap(~education, nrow=1) + 
+  coord_cartesian(ylim=c(0,10)) + 
+  labs(x="Epsilon", 
+       y=expression(paste("RMSE[(Net support)"["noisy"], ", ", "(Net support)"["true"], "]", sep=""))) +
+  theme_bw()
+pdf("plots/assault_rifle_ban_rmse_education.pdf", width=10, height=5)
+assault_rifle_ban_rmse_education
+dev.off()
 
-## 
-# VOTE SHARE BY RACE 
-### 
-# cces.16.actual.des <- svydesign(ids = ~1, data = cces16, weights = ~commonweight)
-# cces16.actual.vs <- as.data.frame(svytable(~CC16_364c+race, design=cces.16.actual.des)) %>%
-#   rename(preference=CC16_364c, share=Freq) %>%
-#   mutate(preference = case_when(preference == 1 ~ "Trump",
-#                                 preference == 2 ~ "Clinton",
-#                                 preference == 3 ~ "Johnson",
-#                                 preference == 4 ~ "Stein",
-#                                 preference == 5 ~ "Other",
-#                                 preference == 6 ~ "Won't vote",
-#                                 preference == 7 ~ "Not sure",
-#                                 preference %in% c(8,9) ~ "Skipped/not asked"),
-#          race = case_when(race == 1 ~ "White",
-#                                  race == 2 ~ "Black",
-#                                  race == 3 ~ "Hispanic",
-#                                  race == 4 ~ "Asian",
-#                                  race == 5 ~ "Other")) %>% 
-#            group_by(race) %>% mutate(share = share/sum(share)) %>% select(race, preference, share)
-# 
-# compare.vs <- merge(cces16.actual.vs, true.weighted.res.vs, by=c("race","preference"),
-#                         suffixes=c("_actual","_estimate")) %>% 
-#   filter(preference %in% c("Clinton","Trump"))
-# 
-# compare.vs %>% group_by(race) %>% 
-#   mutate(net_actual = share_actual - lead(share_actual, default = first(share_actual)),
-#          net_estimate = share_estimate - lead(share_estimate, default = first(share_estimate))) %>% 
-#   filter(preference=="Clinton") %>% select(race, net_actual, net_estimate) %>% View()
