@@ -1,5 +1,6 @@
 ###########
-# Analyze differences in preferences between small and large cell counts
+# Analyze differences in preferences between respondents whose 
+# demographic combos have small vs. large population cell counts
 ###########
 
 # Set up
