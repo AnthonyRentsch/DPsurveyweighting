@@ -68,7 +68,6 @@ cces16_slim <- cces16 %>%
   select(state, education, race, sex, age, preference, assault_rifle_ban) 
   
 # Process ACS data
-# acs_cell_counts$rescaled_n <- acs_cell_counts$n/max(state_weights$max_weight)
 acs_cell_counts$n <- ifelse(acs_cell_counts$n < 1, 1, acs_cell_counts$n)
 acs_cell_counts_slim <- acs_cell_counts %>% select(state, education, race, sex, age, n)
 
@@ -560,35 +559,3 @@ pdf("plots/assault_rifle_ban_rmse_education.pdf", width=10, height=5)
 assault_rifle_ban_rmse_education
 dev.off()
 
-# Appendix
-# compare our "true" weights to actual CCES weights
-
-## 
-# VOTE SHARE BY RACE 
-### 
-# cces.16.actual.des <- svydesign(ids = ~1, data = cces16, weights = ~commonweight)
-# cces16.actual.vs <- as.data.frame(svytable(~CC16_364c+race, design=cces.16.actual.des)) %>%
-#   rename(preference=CC16_364c, share=Freq) %>%
-#   mutate(preference = case_when(preference == 1 ~ "Trump",
-#                                 preference == 2 ~ "Clinton",
-#                                 preference == 3 ~ "Johnson",
-#                                 preference == 4 ~ "Stein",
-#                                 preference == 5 ~ "Other",
-#                                 preference == 6 ~ "Won't vote",
-#                                 preference == 7 ~ "Not sure",
-#                                 preference %in% c(8,9) ~ "Skipped/not asked"),
-#          race = case_when(race == 1 ~ "White",
-#                                  race == 2 ~ "Black",
-#                                  race == 3 ~ "Hispanic",
-#                                  race == 4 ~ "Asian",
-#                                  race == 5 ~ "Other")) %>% 
-#            group_by(race) %>% mutate(share = share/sum(share)) %>% select(race, preference, share)
-# 
-# compare.vs <- merge(cces16.actual.vs, true.weighted.res.vs, by=c("race","preference"),
-#                         suffixes=c("_actual","_estimate")) %>% 
-#   filter(preference %in% c("Clinton","Trump"))
-# 
-# compare.vs %>% group_by(race) %>% 
-#   mutate(net_actual = share_actual - lead(share_actual, default = first(share_actual)),
-#          net_estimate = share_estimate - lead(share_estimate, default = first(share_estimate))) %>% 
-#   filter(preference=="Clinton") %>% select(race, net_actual, net_estimate) %>% View()
